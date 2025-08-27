@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Comprehensive MCP Test Suite - Testing All 37 Tools 🧪💀
+ * Comprehensive MCP Test Suite - Testing All 20 Consolidated Tools 🧪💀
  * 
  * Tests the Enhanced Memory MCP Server by sending real MCP requests
  * and validating responses for all available tools.
@@ -129,8 +129,8 @@ class MCPTester {
 			}
 
 			const tools = response.result.tools
-			if (tools.length !== 37) {
-				throw new Error(`Expected 37 tools, got ${tools.length}`)
+			if (tools.length !== 20) {
+				throw new Error(`Expected 20 tools, got ${tools.length}`)
 			}
 
 			// Verify essential tools exist
@@ -812,7 +812,7 @@ class MCPTester {
 
 	async runAllTests() {
 		this.log('🚀 Starting Comprehensive MCP Test Suite', 'info')
-		this.log('Testing all 37 MCP tools with real requests...', 'info')
+		this.log('Testing all 20 consolidated MCP tools with real requests...', 'info')
 
 		// Ensure server is built
 		this.log('Building server...', 'info')

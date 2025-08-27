@@ -64,6 +64,8 @@ export interface MCPError {
 export interface SearchOptions {
     limit?: number;
     minConfidence?: number;
+    minImportance?: number;
+    searchType?: 'exact' | 'fuzzy' | 'semantic' | 'hybrid';
     types?: string[];
     privacy?: string[];
     tags?: string[];

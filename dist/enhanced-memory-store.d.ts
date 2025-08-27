@@ -16,6 +16,7 @@ export declare class EnhancedMemoryStore {
     private readonly maxCacheSize;
     private readonly cacheExpiry;
     private metrics;
+    private searchEngines;
     constructor(dbPath?: string);
     initialize(): Promise<void>;
     private execute;
@@ -26,13 +27,81 @@ export declare class EnhancedMemoryStore {
     storeRelation(fromEntityId: string, toEntityId: string, relationType: string, strength?: number, properties?: Record<string, any>): Promise<string>;
     analyzeMemory(content: string, extractEntities?: boolean, extractRelations?: boolean): Promise<any>;
     getSimilarMemories(content: string, limit?: number, threshold?: number): Promise<MemoryNode[]>;
+    /**
+     * Advanced search with autocomplete suggestions
+     */
+    autoComplete(query: string, limit?: number): Promise<string[]>;
+    /**
+     * Multi-field search across content, metadata, and tags
+     */
+    multiFieldSearch(query: string, fields?: string[], options?: SearchOptions): Promise<SearchResult>;
+    /**
+     * Find memories by date range
+     */
+    searchByDateRange(startDate: string, endDate: string, options?: SearchOptions): Promise<SearchResult>;
+    /**
+     * Get search suggestions based on recent queries and popular terms
+     */
+    getSearchSuggestions(query?: string, limit?: number): Promise<string[]>;
     getMemoryStats(): Promise<any>;
     getRecentMemories(limit?: number, timeframe?: string): Promise<MemoryNode[]>;
     private extractSimpleEntities;
     private extractSimpleRelations;
     getMemory(id: string): Promise<MemoryNode | null>;
+    /**
+     * Build comprehensive search indexes for a memory
+     * Called automatically when memories are added or updated
+     */
+    private buildSearchIndexes;
+    /**
+     * Build word-level inverted index
+     */
+    private buildWordIndex;
+    /**
+     * Build trigram index for fuzzy matching
+     */
+    private buildTrigramIndex;
+    /**
+     * Build TF-IDF vector for similarity search
+     */
+    private buildTfIdfVector;
+    /**
+     * Remove search indexes for a deleted memory
+     */
+    private removeSearchIndexes;
+    /**
+     * Rebuild all search indexes (maintenance operation)
+     */
+    rebuildSearchIndexes(): Promise<{
+        rebuilt: number;
+        errors: number;
+    }>;
     private convertBigIntValues;
     searchMemories(query: string, options?: SearchOptions): Promise<SearchResult>;
+    /**
+     * Exact search using word index for precise matching
+     */
+    private exactSearch;
+    /**
+     * Fuzzy search using trigrams for typo tolerance
+     */
+    private fuzzySearch;
+    /**
+     * Semantic search using TF-IDF vectors
+     */
+    private semanticSearch;
+    /**
+     * Hybrid search combining multiple strategies
+     */
+    private hybridSearch;
+    /**
+     * Helper method to build search results from memory scores
+     */
+    private buildSearchResult;
+    /**
+     * Fallback to basic search if advanced search fails
+     */
+    private fallbackBasicSearch;
     addEntity(entity: Omit<Entity, 'id' | 'created_at' | 'updated_at'>): Promise<string>;
     addRelation(relation: Omit<Relation, 'id' | 'created_at' | 'updated_at'>): Promise<string>;
     getNodeRelations(nodeId: string): Promise<Relation[]>;

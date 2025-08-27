@@ -4,4 +4,4 @@
  * 20 optimized tools (reduced from 42) with unified interfaces
  */
 export {};
-//# sourceMappingURL=mcp-server.d.ts.map
+//# sourceMappingURL=mcp-server-consolidated.d.ts.map
