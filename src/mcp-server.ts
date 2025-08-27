@@ -92,7 +92,7 @@ server.registerTool(
 	'store_memory',
 	{
 		title: 'Store Memory',
-		description: 'Store a new memory with content, type, and metadata (unlike my brain that forgets everything)',
+		description: 'Store new memory with content and type',
 		inputSchema: {
 			content: z.string().describe('The memory content to store'),
 			type: z
@@ -138,7 +138,7 @@ server.registerTool(
 	'search_memories',
 	{
 		title: 'Search Memories',
-		description: 'Search memories by content, type, or metadata',
+		description: 'Search memories by content or type',
 		inputSchema: {
 			query: z.string().describe('Search query to match against memory content'),
 			type: z.string().optional().describe('Filter by memory type'),
@@ -179,7 +179,7 @@ server.registerTool(
 	'update_memory',
 	{
 		title: 'Update Memory',
-		description: 'Update an existing memory with new content, type, or metadata',
+		description: 'Update memory content, type, or metadata',
 		inputSchema: {
 			id: z.string().describe('The unique identifier of the memory to update'),
 			content: z.string().optional().describe('New memory content'),
@@ -203,7 +203,7 @@ server.registerTool(
 	'store_entity',
 	{
 		title: 'Store Entity',
-		description: 'Store a named entity with type and properties',
+		description: 'Store entity with type and properties',
 		inputSchema: {
 			name: z.string().describe('The entity name'),
 			type: z.string().describe('Type of entity (person, place, concept, etc.)'),
@@ -234,7 +234,7 @@ server.registerTool(
 	'delete_entity',
 	{
 		title: 'Delete Entity',
-		description: 'Delete an entity and all its relationships',
+		description: 'Delete entity and its relationships',
 		inputSchema: {
 			id: z.string().describe('The unique identifier of the entity to delete'),
 		},
@@ -251,7 +251,7 @@ server.registerTool(
 	'get_entities',
 	{
 		title: 'Get Entities',
-		description: 'Retrieve entities with optional filtering',
+		description: 'Retrieve entities with filters',
 		inputSchema: {
 			limit: z.number().optional().describe('Maximum number of results'),
 			type: z.string().optional().describe('Filter by entity type'),
@@ -274,7 +274,7 @@ server.registerTool(
 	'store_relation',
 	{
 		title: 'Store Relation',
-		description: 'Store a relationship between two entities',
+		description: 'Store relationship between entities',
 		inputSchema: {
 			fromEntityId: z.string().describe('Source entity ID'),
 			toEntityId: z.string().describe('Target entity ID'),
@@ -318,7 +318,7 @@ server.registerTool(
 	'get_relations',
 	{
 		title: 'Get Relations',
-		description: 'Retrieve relationships with optional filtering',
+		description: 'Retrieve relationships with filters',
 		inputSchema: {
 			limit: z.number().optional().describe('Maximum number of results'),
 			type: z.string().optional().describe('Filter by relation type'),
@@ -344,7 +344,7 @@ server.registerTool(
 	'analyze_memory',
 	{
 		title: 'Analyze Memory',
-		description: 'Analyze memory content for entities and relationships',
+		description: 'Analyze memory for entities and relations',
 		inputSchema: {
 			content: z.string().describe('Text content to analyze'),
 			extractEntities: z.boolean().optional().describe('Whether to extract entities'),
@@ -393,7 +393,7 @@ server.registerTool(
 	'consolidate_memories',
 	{
 		title: 'Consolidate Memories',
-		description: 'Find and merge similar/duplicate memories',
+		description: 'Find and merge duplicate memories',
 		inputSchema: {
 			similarityThreshold: z
 				.number()
@@ -413,7 +413,7 @@ server.registerTool(
 	'get_memory_graph',
 	{
 		title: 'Get Memory Graph',
-		description: 'Get memory graph visualization data with nodes and edges',
+		description: 'Get memory graph visualization data',
 		inputSchema: {
 			centerNodeId: z
 				.string()
@@ -434,7 +434,7 @@ server.registerTool(
 	'get_memory_stats',
 	{
 		title: 'Get Memory Stats',
-		description: 'Get statistics about stored memories, entities, and relationships',
+		description: 'Get stats about stored data',
 		inputSchema: {},
 	},
 	async () => {
@@ -449,7 +449,7 @@ server.registerTool(
 	'get_recent_memories',
 	{
 		title: 'Get Recent Memories',
-		description: 'Get recently accessed or created memories',
+		description: 'Get recent memories',
 		inputSchema: {
 			limit: z.number().optional().describe('Maximum number of memories to return'),
 			timeframe: z.string().optional().describe('Time period (hour, day, week)'),
@@ -482,7 +482,7 @@ server.registerTool(
 	'export_data',
 	{
 		title: 'Export Data',
-		description: 'Export all memory data in JSON or CSV format',
+		description: 'Export memory data in JSON or CSV',
 		inputSchema: {
 			format: z.enum(['json', 'csv']).optional().describe('Export format'),
 		},
