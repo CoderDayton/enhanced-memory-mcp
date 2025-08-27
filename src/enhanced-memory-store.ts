@@ -842,7 +842,7 @@ export class EnhancedMemoryStore {
 				name: row[1],
 				type: row[2],
 				properties: JSON.parse(row[3] || '{}'),
-				confidence: row[4] || 1.0,
+				confidence: typeof row[4] === 'bigint' ? Number(row[4]) : (row[4] || 1.0),
 				created_at: row[5],
 				updated_at: row[6],
 				source_node_ids: JSON.parse(row[7] || '[]')
@@ -853,7 +853,7 @@ export class EnhancedMemoryStore {
 			const latency = Date.now() - startTime
 			this.recordPerformance('get_entities', latency, false, entities.length)
 			
-			return entities
+			return this.convertBigIntValues(entities)
 			
 		} catch (error) {
 			const latency = Date.now() - startTime
@@ -1541,12 +1541,13 @@ export class EnhancedMemoryStore {
 		// Find memories that have any of the specified tags
 		const placeholders = tagNames.map(() => '?').join(',')
 		const results = await this.execute(`
-			SELECT n.*, GROUP_CONCAT(t.name) as matching_tags
+			SELECT n.id, n.content, n.type, n.metadata, n.created_at, n.updated_at, n.importance_score, n.access_count, 
+			       GROUP_CONCAT(t.name) as matching_tags
 			FROM nodes n
 			JOIN memory_tags mt ON n.id = mt.memory_id
 			JOIN tags t ON mt.tag_id = t.id
 			WHERE t.name IN (${placeholders})
-			GROUP BY n.id
+			GROUP BY n.id, n.content, n.type, n.metadata, n.created_at, n.updated_at, n.importance_score, n.access_count
 			ORDER BY COUNT(t.id) DESC, n.created_at DESC
 			LIMIT ?
 		`, [...tagNames, limit])
