@@ -1,29 +1,76 @@
 #!/usr/bin/env node
 /**
- * Enhanced Memory MCP Server - Dual Mode (stdio + HTTP)
- * Professional TypeScript implementation with DuckDB backend
+ * Enhanced Memory MCP Server - Dual Mode (s	: 3000
+
+console.log(`🧠 Enhanced Memory MCP Server v${await getVersion()}`) Professional TypeScript implementation with DuckDB backend
  * Created by: malu
  */
 import { HTTPServer } from './http-server.js';
 import { EnhancedMemoryStore } from './enhanced-memory-store.js';
-import { readFile } from 'fs/promises';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+async function getVersion() {
+    try {
+        const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+        return packageJson.version || '1.0.0';
+    }
+    catch {
+        // Fallback for when package.json is not found
+        try {
+            const { readFile } = await import('fs/promises');
+            const packageJsonPath = new URL('../package.json', import.meta.url);
+            const data = await readFile(packageJsonPath, 'utf8');
+            const { version } = JSON.parse(data);
+            return version;
+        }
+        catch {
+            return '1.0.0';
+        }
+    }
+}
 const ARGS = process.argv.slice(2);
+// Handle help flag
+if (ARGS.includes('--help') || ARGS.includes('-h')) {
+    console.log(`
+🧠 Enhanced Memory MCP Server v${await getVersion()}
+👤 Created by: malu
+
+USAGE:
+    npx enhanced-memory-mcp [OPTIONS]
+
+OPTIONS:
+    --http              Start HTTP server mode
+    --port <PORT>       Set server port (default: 3000)
+    --stdio             Start stdio mode (default)
+    --help, -h          Show this help message
+    --version, -v       Show version
+
+EXAMPLES:
+    npx enhanced-memory-mcp                    # Start stdio mode
+    npx enhanced-memory-mcp --http             # Start HTTP server
+    npx enhanced-memory-mcp --http --port 8080 # Start HTTP server on port 8080
+
+ENDPOINTS (HTTP mode):
+    GET  /health         - Health check
+    POST /mcp           - MCP protocol endpoint
+    GET  /api/memories  - List memories
+    POST /api/memories  - Create memory
+    GET  /api/stats     - Server statistics
+
+Repository: https://github.com/CoderDayton/enhanced-memory-mcp
+NPM: https://www.npmjs.com/package/enhanced-memory-mcp
+	`);
+    process.exit(0);
+}
+// Handle version flag
+if (ARGS.includes('--version') || ARGS.includes('-v')) {
+    console.log(`v${await getVersion()}`);
+    process.exit(0);
+}
 const MODE = ARGS.includes('--http') ? 'http' : 'stdio';
 const PORT = ARGS.includes('--port')
     ? Number(ARGS[ARGS.indexOf('--port') + 1]) || 3000
     : 3000;
-async function getVersion() {
-    try {
-        const packageJsonPath = new URL('../package.json', import.meta.url); // Go up one directory from dist/
-        const data = await readFile(packageJsonPath, 'utf8');
-        const { version } = JSON.parse(data);
-        return version;
-    }
-    catch (err) {
-        console.error('Failed to read package.json:', err);
-        return 'unknown';
-    }
-}
 console.log(`🧠 Enhanced Memory MCP Server - v${await getVersion()}`);
 console.log(`👤 Created by: malu`);
 console.log(`🗄️  Backend: DuckDB (Analytics-optimized)`);
@@ -74,7 +121,7 @@ else {
                                 },
                                 serverInfo: {
                                     name: 'enhanced-memory-mcp-server',
-                                    version: '1.0.0',
+                                    version: '1.1.1',
                                 },
                             },
                         };

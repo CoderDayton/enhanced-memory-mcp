@@ -1,19 +1,40 @@
 {
     "name": "enhanced-memory-mcp",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "Enhanced MCP memory server with graph-based relationships and intelligent search - built by malu",
     "author": "malu",
     "license": "MIT",
-    "main": "server.js",
+    "main": "dist/enhanced-server.js",
+    "bin": {
+        "enhanced-memory-mcp": "./dist/enhanced-server.js"
+    },
     "type": "module",
+    "homepage": "https://github.com/CoderDayton/enhanced-memory-mcp",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/CoderDayton/enhanced-memory-mcp.git"
+    },
+    "bugs": {
+        "url": "https://github.com/CoderDayton/enhanced-memory-mcp/issues"
+    },
     "keywords": [
         "mcp",
         "memory",
         "graph",
-        "sqlite",
+        "duckdb",
         "ai",
         "enhanced",
-        "typescript"
+        "typescript",
+        "model-context-protocol",
+        "artificial-intelligence",
+        "database",
+        "analytics"
+    ],
+    "files": [
+        "dist/**/*",
+        "README.md",
+        "LICENSE",
+        "package.json"
     ],
     "scripts": {
         "build": "tsc",
@@ -27,13 +48,11 @@
         "test:perf": "npm run benchmark",
         "clean": "rm -rf dist",
         "lint": "tsc --noEmit",
-        "demo": "ts-node --esm src/demo.ts",
-        "mcp": "ts-node --esm src/mcp-stdio.ts",
-        "mcp:http": "npm run dev",
         "test": "echo 'Run npm run benchmark for performance testing'",
         "bench": "npx autocannon -c 10 -d 10s http://localhost:3000/health",
         "type-check": "tsc --noEmit",
-        "baseline": "node scripts/baseline-benchmark.js"
+        "prepublishOnly": "npm run build",
+        "prepack": "npm run build"
     },
     "dependencies": {
         "@duckdb/node-api": "^1.3.2-alpha.26",
