@@ -6,7 +6,9 @@
  */
 
 // Add BigInt serialization support
-(BigInt.prototype as any).toJSON = function() { return Number(this) }
+;(BigInt.prototype as any).toJSON = function () {
+	return Number(this)
+}
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
@@ -33,16 +35,18 @@ server.registerTool(
 			content: z.string().optional(),
 			type: z.string().optional(),
 			metadata: z.record(z.any()).optional(),
-			filters: z.object({
-				type: z.string().optional(),
-				limit: z.number().default(50).optional(),
-				timeframe: z.enum(['hour', 'day', 'week']).optional(),
-			}).optional(),
+			filters: z
+				.object({
+					type: z.string().optional(),
+					limit: z.number().default(50).optional(),
+					timeframe: z.enum(['hour', 'day', 'week']).optional(),
+				})
+				.optional(),
 		},
 	},
 	async ({ operation, id, content, type, metadata, filters }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'create':
 				if (!content) throw new Error('Content required for create operation')
@@ -75,7 +79,7 @@ server.registerTool(
 				}
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -89,27 +93,39 @@ server.registerTool(
 		description: 'Multi-strategy search with autocomplete and filtering',
 		inputSchema: {
 			query: z.string(),
-			strategy: z.enum(['exact', 'fuzzy', 'semantic', 'hybrid']).default('hybrid').optional(),
-			fields: z.array(z.enum(['content', 'metadata', 'tags'])).default(['content']).optional(),
-			filters: z.object({
-				type: z.string().optional(),
-				limit: z.number().default(10).optional(),
-				minImportance: z.number().default(0.0).optional(),
-				startDate: z.string().optional(),
-				endDate: z.string().optional(),
-			}).optional(),
+			strategy: z
+				.enum(['exact', 'fuzzy', 'semantic', 'hybrid'])
+				.default('hybrid')
+				.optional(),
+			fields: z
+				.array(z.enum(['content', 'metadata', 'tags']))
+				.default(['content'])
+				.optional(),
+			filters: z
+				.object({
+					type: z.string().optional(),
+					limit: z.number().default(10).optional(),
+					minImportance: z.number().default(0.0).optional(),
+					startDate: z.string().optional(),
+					endDate: z.string().optional(),
+				})
+				.optional(),
 			suggestions: z.boolean().default(false).optional(),
 		},
 	},
 	async ({ query, strategy, fields, filters, suggestions }) => {
 		let result
-		
+
 		if (suggestions) {
 			result = await memoryStore.autoComplete(query, filters?.limit || 10)
 		} else if (filters?.startDate && filters?.endDate) {
-			result = await memoryStore.searchByDateRange(filters.startDate, filters.endDate, { limit: filters.limit })
+			result = await memoryStore.searchByDateRange(filters.startDate, filters.endDate, {
+				limit: filters.limit,
+			})
 		} else if (fields && fields.length > 1) {
-			result = await memoryStore.multiFieldSearch(query, fields, { limit: filters?.limit || 10 })
+			result = await memoryStore.multiFieldSearch(query, fields, {
+				limit: filters?.limit || 10,
+			})
 		} else {
 			result = await memoryStore.searchMemories(query, {
 				searchType: strategy,
@@ -118,7 +134,7 @@ server.registerTool(
 				types: filters?.type ? [filters.type] : undefined,
 			})
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -137,17 +153,19 @@ server.registerTool(
 			type: z.string().optional(),
 			properties: z.record(z.any()).optional(),
 			confidence: z.number().default(1.0).optional(),
-			filters: z.object({
-				type: z.string().optional(),
-				search: z.string().optional(),
-				limit: z.number().default(50).optional(),
-			}).optional(),
+			filters: z
+				.object({
+					type: z.string().optional(),
+					search: z.string().optional(),
+					limit: z.number().default(50).optional(),
+				})
+				.optional(),
 			mergeTarget: z.string().optional(),
 		},
 	},
 	async ({ operation, id, name, type, properties, confidence, filters, mergeTarget }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'create':
 				if (!name || !type) throw new Error('Name and type required for create operation')
@@ -166,11 +184,12 @@ server.registerTool(
 				result = await memoryStore.deleteEntity(id)
 				break
 			case 'merge':
-				if (!id || !mergeTarget) throw new Error('ID and mergeTarget required for merge operation')
+				if (!id || !mergeTarget)
+					throw new Error('ID and mergeTarget required for merge operation')
 				result = await memoryStore.mergeEntities(id, mergeTarget)
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -190,22 +209,41 @@ server.registerTool(
 			relationType: z.string().optional(),
 			strength: z.number().default(1.0).optional(),
 			properties: z.record(z.any()).optional(),
-			filters: z.object({
-				type: z.string().optional(),
-				entityId: z.string().optional(),
-				limit: z.number().default(50).optional(),
-			}).optional(),
+			filters: z
+				.object({
+					type: z.string().optional(),
+					entityId: z.string().optional(),
+					limit: z.number().default(50).optional(),
+				})
+				.optional(),
 		},
 	},
-	async ({ operation, id, fromEntityId, toEntityId, relationType, strength, properties, filters }) => {
+	async ({
+		operation,
+		id,
+		fromEntityId,
+		toEntityId,
+		relationType,
+		strength,
+		properties,
+		filters,
+	}) => {
 		let result
-		
+
 		switch (operation) {
 			case 'create':
 				if (!fromEntityId || !toEntityId || !relationType) {
-					throw new Error('fromEntityId, toEntityId, and relationType required for create operation')
+					throw new Error(
+						'fromEntityId, toEntityId, and relationType required for create operation'
+					)
 				}
-				result = await memoryStore.storeRelation(fromEntityId, toEntityId, relationType, strength, properties || {})
+				result = await memoryStore.storeRelation(
+					fromEntityId,
+					toEntityId,
+					relationType,
+					strength,
+					properties || {}
+				)
 				break
 			case 'read':
 			case 'list':
@@ -220,7 +258,7 @@ server.registerTool(
 				result = await memoryStore.deleteRelation(id)
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -236,21 +274,25 @@ server.registerTool(
 			operation: z.enum(['add', 'remove', 'list', 'find']),
 			memoryId: z.string().optional(),
 			tags: z.array(z.string()).optional(),
-			filters: z.object({
-				limit: z.number().default(50).optional(),
-			}).optional(),
+			filters: z
+				.object({
+					limit: z.number().default(50).optional(),
+				})
+				.optional(),
 		},
 	},
 	async ({ operation, memoryId, tags, filters }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'add':
-				if (!memoryId || !tags) throw new Error('memoryId and tags required for add operation')
+				if (!memoryId || !tags)
+					throw new Error('memoryId and tags required for add operation')
 				result = await memoryStore.addTags(memoryId, tags)
 				break
 			case 'remove':
-				if (!memoryId || !tags) throw new Error('memoryId and tags required for remove operation')
+				if (!memoryId || !tags)
+					throw new Error('memoryId and tags required for remove operation')
 				result = await memoryStore.removeTags(memoryId, tags)
 				break
 			case 'list':
@@ -261,7 +303,7 @@ server.registerTool(
 				result = await memoryStore.findByTags(tags, filters?.limit)
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -277,18 +319,23 @@ server.registerTool(
 		description: 'Multi-modal content analysis',
 		inputSchema: {
 			content: z.string(),
-			operations: z.array(z.enum(['entities', 'relations', 'similarity', 'consolidation'])).default(['entities', 'relations']).optional(),
-			options: z.object({
-				similarityThreshold: z.number().default(0.7).optional(),
-				consolidationThreshold: z.number().default(0.8).optional(),
-				limit: z.number().default(5).optional(),
-			}).optional(),
+			operations: z
+				.array(z.enum(['entities', 'relations', 'similarity', 'consolidation']))
+				.default(['entities', 'relations'])
+				.optional(),
+			options: z
+				.object({
+					similarityThreshold: z.number().default(0.7).optional(),
+					consolidationThreshold: z.number().default(0.8).optional(),
+					limit: z.number().default(5).optional(),
+				})
+				.optional(),
 		},
 	},
 	async ({ content, operations, options }) => {
 		const result: any = {}
 		const ops = operations || ['entities', 'relations']
-		
+
 		for (const operation of ops) {
 			switch (operation) {
 				case 'entities':
@@ -314,7 +361,7 @@ server.registerTool(
 					break
 			}
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -334,15 +381,26 @@ server.registerTool(
 			sourceMemoryIds: z.array(z.string()).optional(),
 			confidence: z.number().default(1.0).optional(),
 			metadata: z.record(z.any()).optional(),
-			filters: z.object({
-				type: z.string().optional(),
-				limit: z.number().default(50).optional(),
-			}).optional(),
+			filters: z
+				.object({
+					type: z.string().optional(),
+					limit: z.number().default(50).optional(),
+				})
+				.optional(),
 		},
 	},
-	async ({ operation, id, content, type, sourceMemoryIds, confidence, metadata, filters }) => {
+	async ({
+		operation,
+		id,
+		content,
+		type,
+		sourceMemoryIds,
+		confidence,
+		metadata,
+		filters,
+	}) => {
 		let result
-		
+
 		switch (operation) {
 			case 'create':
 				if (!content) throw new Error('Content required for create operation')
@@ -362,7 +420,7 @@ server.registerTool(
 				result = await memoryStore.deleteObservation(id)
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -382,7 +440,7 @@ server.registerTool(
 	},
 	async ({ operation, centerNodeId, depth }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'visualize':
 				result = await memoryStore.getMemoryGraph(centerNodeId, depth)
@@ -391,7 +449,7 @@ server.registerTool(
 				result = await memoryStore.getMemoryStats()
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -414,7 +472,7 @@ server.registerTool(
 	},
 	async ({ operation, target, value, confirm }) => {
 		let result
-		
+
 		if (operation === 'delete') {
 			if (target === 'type') {
 				result = await memoryStore.deleteByType(value as string, confirm)
@@ -423,7 +481,7 @@ server.registerTool(
 				result = await memoryStore.deleteByTags(tags, confirm)
 			}
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -437,18 +495,20 @@ server.registerTool(
 		description: 'Database optimization and cleanup',
 		inputSchema: {
 			operation: z.enum(['cleanup', 'rebuild_indexes', 'clear_cache']),
-			options: z.object({
-				removeOrphanedEntities: z.boolean().default(false).optional(),
-				removeOrphanedRelations: z.boolean().default(false).optional(),
-				removeUnusedTags: z.boolean().default(false).optional(),
-				compactDatabase: z.boolean().default(false).optional(),
-				confirm: z.boolean().default(false).optional(),
-			}).optional(),
+			options: z
+				.object({
+					removeOrphanedEntities: z.boolean().default(false).optional(),
+					removeOrphanedRelations: z.boolean().default(false).optional(),
+					removeUnusedTags: z.boolean().default(false).optional(),
+					compactDatabase: z.boolean().default(false).optional(),
+					confirm: z.boolean().default(false).optional(),
+				})
+				.optional(),
 		},
 	},
 	async ({ operation, options }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'cleanup':
 				result = await memoryStore.cleanup(options || {})
@@ -461,7 +521,7 @@ server.registerTool(
 				result = await memoryStore.clearCache()
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -481,7 +541,7 @@ server.registerTool(
 	},
 	async ({ operation, format, data }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'export':
 				result = await memoryStore.exportData(format || 'json')
@@ -492,7 +552,7 @@ server.registerTool(
 				result = await memoryStore.importData(data, 'json')
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -510,7 +570,7 @@ server.registerTool(
 	},
 	async ({ scope }) => {
 		let result
-		
+
 		switch (scope) {
 			case 'system':
 				result = await memoryStore.getAnalytics()
@@ -519,7 +579,7 @@ server.registerTool(
 				result = await memoryStore.getPerformanceAnalytics()
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -543,7 +603,7 @@ server.registerTool(
 	},
 	async ({ operation, content, threshold, limit, similarityThreshold }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'find_similar':
 				if (!content) throw new Error('Content required for find_similar operation')
@@ -553,7 +613,7 @@ server.registerTool(
 				result = await memoryStore.consolidateMemories(similarityThreshold)
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -575,17 +635,18 @@ server.registerTool(
 	},
 	async ({ operation, limit, timeframe, startDate, endDate }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'recent':
 				result = await memoryStore.getRecentMemories(limit, timeframe)
 				break
 			case 'by_date_range':
-				if (!startDate || !endDate) throw new Error('startDate and endDate required for by_date_range operation')
+				if (!startDate || !endDate)
+					throw new Error('startDate and endDate required for by_date_range operation')
 				result = await memoryStore.searchByDateRange(startDate, endDate, { limit })
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -603,7 +664,7 @@ server.registerTool(
 	},
 	async ({ operation }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'clear':
 				result = await memoryStore.clearCache()
@@ -616,7 +677,7 @@ server.registerTool(
 				result = { message: 'Cache optimization completed', status: 'success' }
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -636,7 +697,7 @@ server.registerTool(
 	},
 	async ({ operation, centerNodeId, depth }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'memory':
 				result = await memoryStore.getMemoryStats()
@@ -648,7 +709,7 @@ server.registerTool(
 				result = await memoryStore.getPerformanceAnalytics()
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -670,7 +731,7 @@ server.registerTool(
 	},
 	async ({ operation, type, tags, updates, confirm }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'delete_by_type':
 				if (!type) throw new Error('Type required for delete_by_type operation')
@@ -681,7 +742,8 @@ server.registerTool(
 				result = await memoryStore.deleteByTags(tags, confirm)
 				break
 			case 'update_by_type':
-				if (!type || !updates) throw new Error('Type and updates required for update_by_type operation')
+				if (!type || !updates)
+					throw new Error('Type and updates required for update_by_type operation')
 				// Use available methods to simulate batch update
 				const memories = await memoryStore.getMemoriesByType(type, 1000)
 				let updateCount = 0
@@ -692,7 +754,7 @@ server.registerTool(
 				result = { updated: updateCount, type }
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -712,12 +774,17 @@ server.registerTool(
 	},
 	async ({ operation, backupId, description }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'create':
 				// Use export functionality for backup
 				result = await memoryStore.exportData('json')
-				result = { backupId: Date.now().toString(), description, data: result, created: new Date() }
+				result = {
+					backupId: Date.now().toString(),
+					description,
+					data: result,
+					created: new Date(),
+				}
 				break
 			case 'restore':
 				if (!backupId) throw new Error('BackupId required for restore operation')
@@ -727,7 +794,7 @@ server.registerTool(
 				result = { message: 'Backup list functionality not implemented', backups: [] }
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -746,7 +813,7 @@ server.registerTool(
 	},
 	async ({ operation, force }) => {
 		let result
-		
+
 		switch (operation) {
 			case 'rebuild':
 				result = await memoryStore.rebuildSearchIndexes()
@@ -760,7 +827,7 @@ server.registerTool(
 				result = { indexStats: stats, status: 'success' }
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
@@ -774,21 +841,26 @@ server.registerTool(
 		description: 'Automated workflow and process management',
 		inputSchema: {
 			operation: z.enum(['auto_tag', 'auto_consolidate', 'auto_cleanup']),
-			options: z.object({
-				dryRun: z.boolean().default(true).optional(),
-				threshold: z.number().default(0.8).optional(),
-				maxActions: z.number().default(100).optional(),
-			}).optional(),
+			options: z
+				.object({
+					dryRun: z.boolean().default(true).optional(),
+					threshold: z.number().default(0.8).optional(),
+					maxActions: z.number().default(100).optional(),
+				})
+				.optional(),
 		},
 	},
 	async ({ operation, options }) => {
 		let result
 		const opts = options || {}
-		
+
 		switch (operation) {
 			case 'auto_tag':
 				// Simulate auto-tagging by analyzing recent memories
-				const recentMemories = await memoryStore.getRecentMemories(opts.maxActions || 100, 'day')
+				const recentMemories = await memoryStore.getRecentMemories(
+					opts.maxActions || 100,
+					'day'
+				)
 				let taggedCount = 0
 				for (const memory of recentMemories.slice(0, opts.maxActions || 10)) {
 					if (!opts.dryRun) {
@@ -799,23 +871,25 @@ server.registerTool(
 				result = { operation: 'auto_tag', processed: taggedCount, dryRun: opts.dryRun }
 				break
 			case 'auto_consolidate':
-				const consolidationResult = await memoryStore.consolidateMemories(opts.threshold || 0.8)
-				result = { 
+				const consolidationResult = await memoryStore.consolidateMemories(
+					opts.threshold || 0.8
+				)
+				result = {
 					operation: 'auto_consolidate',
 					dryRun: opts.dryRun,
-					...consolidationResult
+					...consolidationResult,
 				}
 				break
 			case 'auto_cleanup':
-				const cleanupResult = await memoryStore.cleanup({ 
-					removeOrphanedEntities: true, 
-					removeOrphanedRelations: true, 
-					confirm: !opts.dryRun 
+				const cleanupResult = await memoryStore.cleanup({
+					removeOrphanedEntities: true,
+					removeOrphanedRelations: true,
+					confirm: !opts.dryRun,
 				})
 				result = { operation: 'auto_cleanup', ...cleanupResult, dryRun: opts.dryRun }
 				break
 		}
-		
+
 		return {
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		}
