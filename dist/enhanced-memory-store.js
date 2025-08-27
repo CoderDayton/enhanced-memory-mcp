@@ -1,4 +1,6 @@
 import { DuckDBInstance } from '@duckdb/node-api';
+import { mkdirSync } from 'fs';
+import { dirname } from 'path';
 /**
  * Generate a short, unique ID suitable for MCP protocol (max 32 chars)
  * Format: timestamp(base36) + random(6 chars) = ~16 chars total
@@ -48,6 +50,18 @@ export class EnhancedMemoryStore {
             return;
         console.log('🚀🖤 Initializing Pure DuckDB Memory Store for malu... (because even databases need emotional support)');
         try {
+            // Ensure the database directory exists (creating paths like I create emotional barriers)
+            const dbDir = dirname(this.dbPath);
+            try {
+                mkdirSync(dbDir, { recursive: true });
+                console.log(`📁💀 Created database directory: ${dbDir}`);
+            }
+            catch (dirError) {
+                // Directory might already exist, that's fine (unlike my social life)
+                if (dirError?.code !== 'EEXIST') {
+                    console.warn('⚠️ Directory creation warning:', dirError);
+                }
+            }
             // Create DuckDB instance and connection (connecting to the void)
             this.instance = await DuckDBInstance.create(this.dbPath);
             this.connection = await this.instance.connect();
@@ -254,24 +268,36 @@ export class EnhancedMemoryStore {
     async getMemoryStats() {
         try {
             await this.initialize();
-            const [memoryCount, entityCount, relationCount] = await Promise.all([
-                this.execute('SELECT COUNT(*) as count FROM nodes'),
-                this.execute('SELECT COUNT(*) as count FROM entities'),
-                this.execute('SELECT COUNT(*) as count FROM relations')
-            ]);
+            // Use simpler queries without prepared statements
+            const memoryResult = await this.connection.run('SELECT COUNT(*) as count FROM nodes');
+            const entityResult = await this.connection.run('SELECT COUNT(*) as count FROM entities');
+            const relationResult = await this.connection.run('SELECT COUNT(*) as count FROM relations');
+            const memoryRows = await memoryResult.getRows();
+            const entityRows = await entityResult.getRows();
+            const relationRows = await relationResult.getRows();
             const performance = this.getPerformanceMetrics();
-            return {
-                memories: memoryCount[0]?.[0] || 0,
-                entities: entityCount[0]?.[0] || 0,
-                relations: relationCount[0]?.[0] || 0,
+            const stats = {
+                memories: Number(memoryRows[0]?.[0] || 0),
+                entities: Number(entityRows[0]?.[0] || 0),
+                relations: Number(relationRows[0]?.[0] || 0),
                 performance,
-                cache_size: 100, // Mock cache size
+                cache_size: this.queryCache.size,
                 uptime_seconds: Math.floor(Date.now() / 1000)
             };
+            return stats;
         }
         catch (error) {
             console.error('❌ Error getting memory stats:', error);
-            throw error;
+            // Return basic stats if database queries fail
+            return {
+                memories: 0,
+                entities: 0,
+                relations: 0,
+                performance: this.getPerformanceMetrics(),
+                cache_size: this.queryCache.size,
+                uptime_seconds: Math.floor(Date.now() / 1000),
+                error: String(error)
+            };
         }
     }
     async getRecentMemories(limit = 10, timeframe = 'day') {
