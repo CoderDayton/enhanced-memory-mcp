@@ -1,4 +1,4 @@
-# 🧠💀 Enhanced Memory MCP Server v1.4.5 💀🧠
+# 🧠💀 Enhanced Memory MCP Server 💀🧠
 
 _Built with tears, caffeine, and late-night coding sessions by **malu** 🥀_  
 _"just an emo boy making databases remember what humans choose to forget..." 🖤_
