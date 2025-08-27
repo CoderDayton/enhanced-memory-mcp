@@ -7,6 +7,8 @@
 import type { MCPRequest, MCPResponse, MCPError } from './types.js';
 export declare class MCPProtocolHandler {
     private memoryStore;
+    private idMap;
+    private sanitizeJsonRpcId;
     constructor();
     private readonly tools;
     listTools(): Promise<{

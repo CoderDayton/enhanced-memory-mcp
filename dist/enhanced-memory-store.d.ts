@@ -76,5 +76,66 @@ export declare class EnhancedMemoryStore {
     getCacheStats(): CacheStats;
     clearCache(): void;
     close(): Promise<void>;
+    addTags(memoryId: string, tagNames: string[]): Promise<{
+        added: string[];
+        existing: string[];
+    }>;
+    removeTags(memoryId: string, tagNames: string[]): Promise<{
+        removed: string[];
+        notFound: string[];
+    }>;
+    listTags(memoryId?: string): Promise<Array<{
+        id: string;
+        name: string;
+        color: string;
+        usageCount: number;
+    }>>;
+    findByTags(tagNames: string[], limit?: number): Promise<Array<{
+        memory: any;
+        matchingTags: string[];
+    }>>;
+    deleteByType(type: string, confirm?: boolean): Promise<{
+        deleted: number;
+        entities: number;
+        relations: number;
+    }>;
+    deleteByTags(tagNames: string[], confirm?: boolean): Promise<{
+        deleted: number;
+    }>;
+    listEntities(limit?: number, type?: string): Promise<Array<any>>;
+    mergeEntities(sourceEntityId: string, targetEntityId: string): Promise<{
+        merged: boolean;
+        relations: number;
+    }>;
+    listRelations(limit?: number, type?: string): Promise<Array<any>>;
+    storeObservation(content: string, type?: string, sourceMemoryIds?: string[], confidence?: number, metadata?: Record<string, any>): Promise<string>;
+    listObservations(limit?: number, type?: string): Promise<Array<any>>;
+    deleteObservation(id: string): Promise<boolean>;
+    cleanup(options?: {
+        removeOrphanedEntities?: boolean;
+        removeOrphanedRelations?: boolean;
+        removeUnusedTags?: boolean;
+        compactDatabase?: boolean;
+        confirm?: boolean;
+    }): Promise<{
+        orphanedEntities: number;
+        orphanedRelations: number;
+        unusedTags: number;
+        compacted: boolean;
+    }>;
+    getAnalytics(): Promise<{
+        memoryStats: any;
+        entityStats: any;
+        relationStats: any;
+        tagStats: any;
+        performanceStats: any;
+        trends: any;
+    }>;
+    getPerformanceAnalytics(): Promise<{
+        operationBreakdown: any[];
+        cacheEfficiency: any[];
+        slowestOperations: any[];
+        hourlyUsage: any[];
+    }>;
 }
 //# sourceMappingURL=enhanced-memory-store.d.ts.map

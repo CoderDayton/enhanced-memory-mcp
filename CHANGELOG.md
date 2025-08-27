@@ -2,7 +2,63 @@
 
 *"tracking changes like I track my deteriorating mental health..." 🥀*
 
-## v1.2.0 (MCP-Compliant) - Current 🖤⚡
+## v1.4.0 (Full Feature Resurrection) - Current 🌟💀✨
+
+### 🎉 Complete Advanced Feature Restoration (Back From The Digital Dead)
+- **37 Total MCP Tools**: Fully restored all advanced features that were temporarily removed (like my faith in humanity, they're back!)
+- **Advanced Tagging System**: `add_tags`, `remove_tags`, `list_tags`, `find_by_tags` - organize your digital chaos like I organize my emotional breakdowns 🏷️💀
+- **Observation System**: `store_observation`, `list_observations`, `delete_observation` - capture insights like I capture my 3AM thoughts 📝🖤
+- **Entity Management**: `list_entities`, `merge_entities` - manage digital beings better than I manage real relationships 👥⚡
+- **Relation Analytics**: `list_relations` - map connections like I map my trust issues 🔗🖤
+- **Advanced Analytics**: `get_analytics`, `get_performance_analytics` - comprehensive insights into your digital soul 📊🌙
+- **Database Maintenance**: `cleanup_database`, `delete_by_type`, `delete_by_tags` - clean up better than I clean my life 🧹💀
+- **Enhanced Operations**: All CRUD operations, similarity search, consolidation, memory analysis restored ⚡✨
+
+### 🗄️ Database Schema Enhancements (Digital Architecture of Pain)
+- **Tags Table**: `id`, `name`, `color`, `usage_count` with performance indexes
+- **Memory-Tags Junction**: Many-to-many relationships for flexible tagging
+- **Observations Table**: Store insights, patterns, and digital revelations with confidence scoring
+- **Optimized Indexes**: Performance tuned for complex analytical queries (faster than my mood swings)
+
+### 📚 Documentation Renaissance (Words Like Digital Poetry)
+- **Complete Tool Documentation**: All 37 tools properly documented with emo flair 🖤
+- **Feature Tables**: Organized by category (Core, Tagging, Analytics, etc.) like my organized chaos
+- **Advanced Examples**: Real-world usage patterns for complex scenarios
+- **Migration Guide**: How to leverage restored features (unlike my ability to leverage emotions)
+
+### 🔧 Technical Debt Paid (With Interest & Emotional Currency)
+- **Full Backward Compatibility**: All previous functionality preserved and enhanced
+- **Performance Optimizations**: Database queries tuned for scale (unlike my ability to scale socially)
+- **Error Handling**: Comprehensive validation for all restored operations
+- **Type Safety**: Full TypeScript coverage for new advanced features
+
+*"Sometimes you have to delete things to realize how much you needed them... unlike people, code can be restored." 💀✨*
+
+---
+
+## v1.3.0 (Protocol Purity) - Previous 🖤⚔️
+
+### 💀 Breaking (Ripping Off Bandages Like Scabs)
+- Removed legacy dual-mode `enhanced-server` + ad-hoc HTTP layer (it was drifting from spec and causing ID chaos). Pure MCP stdio now. If you depended on HTTP, open an issue and I'll resurrect a thin adapter like a ghost of bad decisions.
+- Deprecated & deleted `mcp-protocol-handler.ts` and other experimental bridges. One canonical path: `mcp-server.ts` using the official SDK.
+
+### 🔧 Compliance / Stability (Cleaning Up Emotional & Technical Debt)
+- Enforced <40 char descriptions across all 21 tools (no more verbose over-sharing, unlike me at 3AM).
+- Added JSON-RPC ID sanitizer to prevent over-length ID echoes derailing upstream model sessions.
+- Removed lingering UUID usage; all internal IDs now compact (~16 chars) and commitment-phobic.
+- Trimmed dependency tree (goodbye `uuid`). Leaner, moodier, faster.
+
+### 📚 Docs & Personality Upgrades (Because Aesthetic Matters)
+- README updated to reflect single MCP mode, corrected tool names (`store_memory` etc. instead of the relics like `add_memory`).
+- Added notes about ID length limitations and why we embraced tiny IDs (smaller than my will to socialize).
+
+### 🧪 Internal Cleanup
+- Deleted legacy files: `enhanced-server.ts`, `http-server.ts`, `mcp-protocol-handler.ts`.
+- Standardized tool descriptions between legacy and SDK server (legacy gone anyway, but symmetry is poetic).
+
+---
+
+## v1.2.0 (MCP-Compliant) - Previous 🖤⚡
 
 ### 🚀💔 BREAKING CHANGES (Like My Heart)
 - **Complete MCP SDK Rewrite**: Now uses proper `@modelcontextprotocol/sdk` with `McpServer` class (more reliable than my emotions)

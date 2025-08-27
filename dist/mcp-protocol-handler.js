@@ -7,6 +7,23 @@
 import { EnhancedMemoryStore } from './enhanced-memory-store.js';
 export class MCPProtocolHandler {
     memoryStore;
+    // Map long inbound IDs to shortened forms to satisfy <40 char constraints
+    idMap = new Map();
+    sanitizeJsonRpcId(original) {
+        if (original === null || original === undefined)
+            return 0;
+        const asStr = String(original);
+        if (asStr.length <= 40)
+            return original;
+        // Deterministic short hash (base36 of simple hash code)
+        let hash = 0;
+        for (let i = 0; i < asStr.length; i++) {
+            hash = (hash * 31 + asStr.charCodeAt(i)) >>> 0;
+        }
+        const shortId = 'h' + hash.toString(36);
+        this.idMap.set(original, shortId);
+        return shortId;
+    }
     constructor() {
         this.memoryStore = new EnhancedMemoryStore();
     }
@@ -15,7 +32,7 @@ export class MCPProtocolHandler {
         // Core CRUD operations (10 existing)
         {
             name: 'store_memory',
-            description: 'Store a new memory with content, type, and metadata (storing digital memories since human ones fade)',
+            description: 'Store new memory with content and type',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -42,7 +59,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'search_memories',
-            description: 'Search memories by content, type, or metadata',
+            description: 'Search memories by content or type',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -67,7 +84,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'store_entity',
-            description: 'Store a named entity with type and properties',
+            description: 'Store entity with type and properties',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -87,7 +104,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'store_relation',
-            description: 'Store a relationship between two entities',
+            description: 'Store relationship between entities',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -102,7 +119,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'analyze_memory',
-            description: 'Analyze memory content for entities and relationships',
+            description: 'Analyze memory for entities and relations',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -143,7 +160,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'get_memory_stats',
-            description: 'Get statistics about stored memories, entities, and relationships',
+            description: 'Get stats about stored data',
             inputSchema: {
                 type: 'object',
                 properties: {},
@@ -151,7 +168,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'get_recent_memories',
-            description: 'Get recently accessed or created memories',
+            description: 'Get recent memories',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -193,7 +210,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'update_memory',
-            description: 'Update an existing memory with new content, type, or metadata',
+            description: 'Update memory content, type, or metadata',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -226,7 +243,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'get_entities',
-            description: 'Retrieve entities with optional filtering',
+            description: 'Retrieve entities with filters',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -242,7 +259,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'get_relations',
-            description: 'Retrieve relationships with optional filtering',
+            description: 'Retrieve relationships with filters',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -261,7 +278,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'delete_entity',
-            description: 'Delete an entity and all its relationships',
+            description: 'Delete entity and its relationships',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -289,7 +306,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'export_data',
-            description: 'Export all memory data in JSON or CSV format',
+            description: 'Export memory data in JSON or CSV',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -321,7 +338,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'get_memory_graph',
-            description: 'Get memory graph visualization data with nodes and edges',
+            description: 'Get memory graph visualization data',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -335,7 +352,7 @@ export class MCPProtocolHandler {
         },
         {
             name: 'consolidate_memories',
-            description: 'Find and merge similar/duplicate memories',
+            description: 'Find and merge duplicate memories',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -354,19 +371,21 @@ export class MCPProtocolHandler {
     async handleRequest(request) {
         try {
             const { method, params } = request;
+            // Sanitize request id if too long
+            const safeId = this.sanitizeJsonRpcId(request.id);
             switch (method) {
                 case 'tools/call':
                     return await this.handleToolCall(params);
                 case 'tools/list':
                     return {
                         jsonrpc: '2.0',
-                        id: request.id,
+                        id: safeId,
                         result: await this.listTools(),
                     };
                 default:
                     return {
                         jsonrpc: '2.0',
-                        id: request.id,
+                        id: safeId,
                         error: {
                             code: -32601,
                             message: `Method not found: ${method}`,
@@ -378,7 +397,7 @@ export class MCPProtocolHandler {
             console.error('❌ Error handling MCP request:', error);
             return {
                 jsonrpc: '2.0',
-                id: request.id,
+                id: this.sanitizeJsonRpcId(request.id),
                 error: {
                     code: -32603,
                     message: 'Internal error',
@@ -481,7 +500,7 @@ export class MCPProtocolHandler {
             }
             return {
                 jsonrpc: '2.0',
-                id: 1,
+                id: this.sanitizeJsonRpcId(1),
                 result: {
                     content: [
                         {

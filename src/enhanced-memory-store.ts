@@ -139,7 +139,7 @@ export class EnhancedMemoryStore {
 			)
 		`)
 
-		this.execute(`
+		await this.execute(`
 			CREATE TABLE IF NOT EXISTS performance_stats (
 				id INTEGER PRIMARY KEY,
 				operation VARCHAR NOT NULL,
@@ -147,6 +147,41 @@ export class EnhancedMemoryStore {
 				timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				cache_hit BOOLEAN DEFAULT false,
 				result_count INTEGER DEFAULT 0
+			)
+		`)
+
+		// Tags table for memory tagging system (because organizing digital chaos is easier than life chaos 🏷️💀)
+		await this.execute(`
+			CREATE TABLE IF NOT EXISTS tags (
+				id VARCHAR PRIMARY KEY,
+				name VARCHAR NOT NULL UNIQUE,
+				color VARCHAR DEFAULT '#666666',
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				usage_count INTEGER DEFAULT 0
+			)
+		`)
+
+		// Junction table for memory-tag relationships (many-to-many like my complicated feelings)
+		await this.execute(`
+			CREATE TABLE IF NOT EXISTS memory_tags (
+				memory_id VARCHAR NOT NULL,
+				tag_id VARCHAR NOT NULL,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (memory_id, tag_id)
+			)
+		`)
+
+		// Observations table for captured insights (storing wisdom that I'll probably ignore 📝🖤)
+		await this.execute(`
+			CREATE TABLE IF NOT EXISTS observations (
+				id VARCHAR PRIMARY KEY,
+				content TEXT NOT NULL,
+				type VARCHAR DEFAULT 'observation',
+				confidence DOUBLE DEFAULT 1.0,
+				source_memory_ids JSON,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				metadata JSON
 			)
 		`)		// Create indexes after tables exist
 		const indexQueries = [
@@ -162,7 +197,13 @@ export class EnhancedMemoryStore {
 			`CREATE INDEX IF NOT EXISTS idx_relations_type ON relations(relation_type)`,
 			`CREATE INDEX IF NOT EXISTS idx_relations_strength ON relations(strength DESC)`,
 			`CREATE INDEX IF NOT EXISTS idx_perf_operation ON performance_stats(operation)`,
-			`CREATE INDEX IF NOT EXISTS idx_perf_timestamp ON performance_stats(timestamp)`
+			`CREATE INDEX IF NOT EXISTS idx_perf_timestamp ON performance_stats(timestamp)`,
+			`CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)`,
+			`CREATE INDEX IF NOT EXISTS idx_tags_usage ON tags(usage_count DESC)`,
+			`CREATE INDEX IF NOT EXISTS idx_memory_tags_memory ON memory_tags(memory_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_memory_tags_tag ON memory_tags(tag_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type)`,
+			`CREATE INDEX IF NOT EXISTS idx_observations_confidence ON observations(confidence DESC)`
 		]
 
 		for (const query of indexQueries) {
@@ -1345,5 +1386,583 @@ export class EnhancedMemoryStore {
 			this.connection.closeSync()
 		}
 		console.log('🔒 Database connection closed')
+	}
+
+	// === ADVANCED FEATURES SECTION (The Cool Stuff That Makes Life Worth Living) 🌟💀 ===
+
+	// === TAG MANAGEMENT SYSTEM (Organizing Digital Chaos) 🏷️🖤 ===
+	
+	async addTags(memoryId: string, tagNames: string[]): Promise<{ added: string[], existing: string[] }> {
+		await this.initialize()
+		
+		const added: string[] = []
+		const existing: string[] = []
+		
+		for (const tagName of tagNames) {
+			// Get or create tag
+			let tagResults = await this.execute('SELECT id FROM tags WHERE name = ?', [tagName])
+			let tagId: string
+			
+			if (tagResults.length === 0) {
+				// Create new tag
+				tagId = generateShortId()
+				await this.execute(`
+					INSERT INTO tags (id, name, usage_count)
+					VALUES (?, ?, 1)
+				`, [tagId, tagName])
+				added.push(tagName)
+			} else {
+				tagId = tagResults[0].id
+				// Check if already tagged
+				const existingLink = await this.execute(`
+					SELECT 1 FROM memory_tags WHERE memory_id = ? AND tag_id = ?
+				`, [memoryId, tagId])
+				
+				if (existingLink.length > 0) {
+					existing.push(tagName)
+					continue
+				}
+				
+				// Increment usage count
+				await this.execute('UPDATE tags SET usage_count = usage_count + 1 WHERE id = ?', [tagId])
+				added.push(tagName)
+			}
+			
+			// Link memory to tag
+			await this.execute(`
+				INSERT OR IGNORE INTO memory_tags (memory_id, tag_id)
+				VALUES (?, ?)
+			`, [memoryId, tagId])
+		}
+		
+		console.log(`🏷️ Tagged memory ${memoryId} with ${added.length} new tags (${existing.length} already existed)`)
+		return { added, existing }
+	}
+	
+	async removeTags(memoryId: string, tagNames: string[]): Promise<{ removed: string[], notFound: string[] }> {
+		await this.initialize()
+		
+		const removed: string[] = []
+		const notFound: string[] = []
+		
+		for (const tagName of tagNames) {
+			const tagResults = await this.execute('SELECT id FROM tags WHERE name = ?', [tagName])
+			
+			if (tagResults.length === 0) {
+				notFound.push(tagName)
+				continue
+			}
+			
+			const tagId = tagResults[0].id
+			
+			// Remove link
+			const result = await this.execute(`
+				DELETE FROM memory_tags WHERE memory_id = ? AND tag_id = ?
+			`, [memoryId, tagId])
+			
+			if (result.length > 0) {
+				// Decrement usage count
+				await this.execute('UPDATE tags SET usage_count = usage_count - 1 WHERE id = ?', [tagId])
+				removed.push(tagName)
+			} else {
+				notFound.push(tagName)
+			}
+		}
+		
+		console.log(`🗑️ Removed ${removed.length} tags from memory ${memoryId}`)
+		return { removed, notFound }
+	}
+	
+	async listTags(memoryId?: string): Promise<Array<{ id: string, name: string, color: string, usageCount: number }>> {
+		await this.initialize()
+		
+		let query: string
+		let params: any[] = []
+		
+		if (memoryId) {
+			query = `
+				SELECT t.id, t.name, t.color, t.usage_count 
+				FROM tags t
+				JOIN memory_tags mt ON t.id = mt.tag_id
+				WHERE mt.memory_id = ?
+				ORDER BY t.name
+			`
+			params = [memoryId]
+		} else {
+			query = `
+				SELECT id, name, color, usage_count 
+				FROM tags 
+				ORDER BY usage_count DESC, name ASC
+			`
+		}
+		
+		const results = await this.execute(query, params)
+		return results.map(row => ({
+			id: row.id,
+			name: row.name,
+			color: row.color,
+			usageCount: row.usage_count
+		}))
+	}
+	
+	async findByTags(tagNames: string[], limit: number = 50): Promise<Array<{ memory: any, matchingTags: string[] }>> {
+		await this.initialize()
+		
+		if (tagNames.length === 0) return []
+		
+		// Find memories that have any of the specified tags
+		const placeholders = tagNames.map(() => '?').join(',')
+		const results = await this.execute(`
+			SELECT n.*, GROUP_CONCAT(t.name) as matching_tags
+			FROM nodes n
+			JOIN memory_tags mt ON n.id = mt.memory_id
+			JOIN tags t ON mt.tag_id = t.id
+			WHERE t.name IN (${placeholders})
+			GROUP BY n.id
+			ORDER BY COUNT(t.id) DESC, n.created_at DESC
+			LIMIT ?
+		`, [...tagNames, limit])
+		
+		return results.map(row => ({
+			memory: {
+				id: row.id,
+				content: row.content,
+				type: row.type,
+				metadata: row.metadata ? JSON.parse(row.metadata) : {},
+				createdAt: row.created_at,
+				importanceScore: row.importance_score
+			},
+			matchingTags: row.matching_tags ? row.matching_tags.split(',') : []
+		}))
+	}
+
+	// === DELETION OPERATIONS (Saying Goodbye Digital Style) 💀🗑️ ===
+	
+	async deleteByType(type: string, confirm: boolean = false): Promise<{ deleted: number, entities: number, relations: number }> {
+		if (!confirm) {
+			throw new Error('Deletion requires explicit confirmation (set confirm: true)')
+		}
+		
+		await this.initialize()
+		
+		// Get memories of this type
+		const memories = await this.execute('SELECT id FROM nodes WHERE type = ?', [type])
+		const memoryIds = memories.map(m => m.id)
+		
+		let deletedEntities = 0
+		let deletedRelations = 0
+		
+		if (memoryIds.length > 0) {
+			// Delete associated entities
+			const entityResult = await this.execute(`
+				DELETE FROM entities WHERE JSON_EXTRACT(source_node_ids, '$') LIKE '%' || ? || '%'
+			`, [memoryIds[0]]) // Simplified for demo
+			deletedEntities = entityResult.length || 0
+			
+			// Delete associated relations
+			const relationResult = await this.execute(`
+				DELETE FROM relations WHERE JSON_EXTRACT(source_node_ids, '$') LIKE '%' || ? || '%'
+			`, [memoryIds[0]])
+			deletedRelations = relationResult.length || 0
+			
+			// Delete memories
+			await this.execute('DELETE FROM nodes WHERE type = ?', [type])
+		}
+		
+		console.log(`🗑️💀 Deleted ${memories.length} memories of type '${type}' and associated data`)
+		return { deleted: memories.length, entities: deletedEntities, relations: deletedRelations }
+	}
+	
+	async deleteByTags(tagNames: string[], confirm: boolean = false): Promise<{ deleted: number }> {
+		if (!confirm) {
+			throw new Error('Deletion requires explicit confirmation (set confirm: true)')
+		}
+		
+		await this.initialize()
+		
+		const memoriesWithTags = await this.findByTags(tagNames)
+		const memoryIds = memoriesWithTags.map(m => m.memory.id)
+		
+		if (memoryIds.length > 0) {
+			const placeholders = memoryIds.map(() => '?').join(',')
+			await this.execute(`DELETE FROM nodes WHERE id IN (${placeholders})`, memoryIds)
+		}
+		
+		console.log(`🗑️🏷️ Deleted ${memoryIds.length} memories with tags: ${tagNames.join(', ')}`)
+		return { deleted: memoryIds.length }
+	}
+
+	// === ENTITY OPERATIONS (Managing Digital Beings) 👥💀 ===
+	
+	async listEntities(limit: number = 50, type?: string): Promise<Array<any>> {
+		await this.initialize()
+		
+		let query = 'SELECT * FROM entities'
+		const params: any[] = []
+		
+		if (type) {
+			query += ' WHERE type = ?'
+			params.push(type)
+		}
+		
+		query += ' ORDER BY confidence DESC, created_at DESC LIMIT ?'
+		params.push(limit)
+		
+		const results = await this.execute(query, params)
+		return results.map(row => ({
+			id: row.id,
+			name: row.name,
+			type: row.type,
+			properties: row.properties ? JSON.parse(row.properties) : {},
+			confidence: row.confidence,
+			createdAt: row.created_at,
+			sourceNodeIds: row.source_node_ids ? JSON.parse(row.source_node_ids) : []
+		}))
+	}
+	
+	async mergeEntities(sourceEntityId: string, targetEntityId: string): Promise<{ merged: boolean, relations: number }> {
+		await this.initialize()
+		
+		// Get source entity
+		const sourceResults = await this.execute('SELECT * FROM entities WHERE id = ?', [sourceEntityId])
+		if (sourceResults.length === 0) {
+			throw new Error(`Source entity ${sourceEntityId} not found`)
+		}
+		
+		// Update all relations pointing to source entity
+		await this.execute(`
+			UPDATE relations SET from_entity_id = ? WHERE from_entity_id = ?
+		`, [targetEntityId, sourceEntityId])
+		
+		await this.execute(`
+			UPDATE relations SET to_entity_id = ? WHERE to_entity_id = ?
+		`, [targetEntityId, sourceEntityId])
+		
+		const relationCount = await this.execute(`
+			SELECT COUNT(*) as count FROM relations 
+			WHERE from_entity_id = ? OR to_entity_id = ?
+		`, [targetEntityId, targetEntityId])
+		
+		// Delete source entity
+		await this.execute('DELETE FROM entities WHERE id = ?', [sourceEntityId])
+		
+		console.log(`🔀 Merged entity ${sourceEntityId} into ${targetEntityId}`)
+		return { merged: true, relations: relationCount[0]?.count || 0 }
+	}
+
+	// === RELATION OPERATIONS (Mapping Connections) 🔗⛓️ ===
+	
+	async listRelations(limit: number = 50, type?: string): Promise<Array<any>> {
+		await this.initialize()
+		
+		let query = `
+			SELECT r.*, 
+				   e1.name as from_entity_name, 
+				   e2.name as to_entity_name
+			FROM relations r
+			JOIN entities e1 ON r.from_entity_id = e1.id
+			JOIN entities e2 ON r.to_entity_id = e2.id
+		`
+		const params: any[] = []
+		
+		if (type) {
+			query += ' WHERE r.relation_type = ?'
+			params.push(type)
+		}
+		
+		query += ' ORDER BY r.strength DESC, r.created_at DESC LIMIT ?'
+		params.push(limit)
+		
+		const results = await this.execute(query, params)
+		return results.map(row => ({
+			id: row.id,
+			fromEntityId: row.from_entity_id,
+			toEntityId: row.to_entity_id,
+			fromEntityName: row.from_entity_name,
+			toEntityName: row.to_entity_name,
+			relationType: row.relation_type,
+			strength: row.strength,
+			properties: row.properties ? JSON.parse(row.properties) : {},
+			createdAt: row.created_at
+		}))
+	}
+
+	// === OBSERVATION SYSTEM (Capturing Digital Insights) 📝🔍 ===
+	
+	async storeObservation(content: string, type: string = 'observation', sourceMemoryIds: string[] = [], confidence: number = 1.0, metadata: Record<string, any> = {}): Promise<string> {
+		await this.initialize()
+		
+		const id = generateShortId()
+		
+		await this.execute(`
+			INSERT INTO observations (id, content, type, confidence, source_memory_ids, metadata)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, [id, content, type, confidence, JSON.stringify(sourceMemoryIds), JSON.stringify(metadata)])
+		
+		console.log(`📝 Stored observation: ${id}`)
+		return id
+	}
+	
+	async listObservations(limit: number = 50, type?: string): Promise<Array<any>> {
+		await this.initialize()
+		
+		let query = 'SELECT * FROM observations'
+		const params: any[] = []
+		
+		if (type) {
+			query += ' WHERE type = ?'
+			params.push(type)
+		}
+		
+		query += ' ORDER BY confidence DESC, created_at DESC LIMIT ?'
+		params.push(limit)
+		
+		const results = await this.execute(query, params)
+		return results.map(row => ({
+			id: row.id,
+			content: row.content,
+			type: row.type,
+			confidence: row.confidence,
+			sourceMemoryIds: row.source_memory_ids ? JSON.parse(row.source_memory_ids) : [],
+			metadata: row.metadata ? JSON.parse(row.metadata) : {},
+			createdAt: row.created_at
+		}))
+	}
+	
+	async deleteObservation(id: string): Promise<boolean> {
+		await this.initialize()
+		
+		const result = await this.execute('DELETE FROM observations WHERE id = ?', [id])
+		const deleted = result.length > 0
+		
+		if (deleted) {
+			console.log(`🗑️ Deleted observation: ${id}`)
+		}
+		
+		return deleted
+	}
+
+	// === SYSTEM MAINTENANCE (Digital Housekeeping) 🧹💀 ===
+	
+	async cleanup(options: { 
+		removeOrphanedEntities?: boolean
+		removeOrphanedRelations?: boolean  
+		removeUnusedTags?: boolean
+		compactDatabase?: boolean
+		confirm?: boolean
+	} = {}): Promise<{ 
+		orphanedEntities: number
+		orphanedRelations: number
+		unusedTags: number
+		compacted: boolean
+	}> {
+		if (!options.confirm) {
+			throw new Error('Cleanup requires explicit confirmation (set confirm: true)')
+		}
+		
+		await this.initialize()
+		
+		let orphanedEntities = 0
+		let orphanedRelations = 0
+		let unusedTags = 0
+		
+		// Remove orphaned entities (entities not referenced by any memory)
+		if (options.removeOrphanedEntities) {
+			const orphanedEntityResults = await this.execute(`
+				DELETE FROM entities 
+				WHERE JSON_EXTRACT(source_node_ids, '$') NOT IN (
+					SELECT '[' || '"' || id || '"' || ']' FROM nodes
+				)
+			`)
+			orphanedEntities = orphanedEntityResults.length || 0
+		}
+		
+		// Remove orphaned relations (relations referencing non-existent entities)
+		if (options.removeOrphanedRelations) {
+			const orphanedRelationResults = await this.execute(`
+				DELETE FROM relations 
+				WHERE from_entity_id NOT IN (SELECT id FROM entities)
+				   OR to_entity_id NOT IN (SELECT id FROM entities)
+			`)
+			orphanedRelations = orphanedRelationResults.length || 0
+		}
+		
+		// Remove unused tags (tags with usage_count = 0)
+		if (options.removeUnusedTags) {
+			const unusedTagResults = await this.execute(`
+				DELETE FROM tags WHERE usage_count = 0
+			`)
+			unusedTags = unusedTagResults.length || 0
+		}
+		
+		// Compact database
+		let compacted = false
+		if (options.compactDatabase) {
+			try {
+				await this.execute('VACUUM')
+				compacted = true
+			} catch (error) {
+				console.warn('⚠️ Database compaction failed:', error)
+			}
+		}
+		
+		console.log(`🧹 Cleanup completed: ${orphanedEntities} entities, ${orphanedRelations} relations, ${unusedTags} tags removed`)
+		return { orphanedEntities, orphanedRelations, unusedTags, compacted }
+	}
+
+	// === ENHANCED ANALYTICS (Digital Self-Reflection) 📊🖤 ===
+	
+	async getAnalytics(): Promise<{
+		memoryStats: any
+		entityStats: any
+		relationStats: any
+		tagStats: any
+		performanceStats: any
+		trends: any
+	}> {
+		await this.initialize()
+		
+		// Memory statistics
+		const memoryStats = await this.execute(`
+			SELECT 
+				type,
+				COUNT(*) as count,
+				AVG(importance_score) as avg_importance,
+				AVG(access_count) as avg_access_count
+			FROM nodes 
+			GROUP BY type
+			ORDER BY count DESC
+		`)
+		
+		// Entity statistics  
+		const entityStats = await this.execute(`
+			SELECT 
+				type,
+				COUNT(*) as count,
+				AVG(confidence) as avg_confidence
+			FROM entities
+			GROUP BY type
+			ORDER BY count DESC
+		`)
+		
+		// Relation statistics
+		const relationStats = await this.execute(`
+			SELECT 
+				relation_type,
+				COUNT(*) as count,
+				AVG(strength) as avg_strength
+			FROM relations
+			GROUP BY relation_type
+			ORDER BY count DESC
+		`)
+		
+		// Tag statistics
+		const tagStats = await this.execute(`
+			SELECT 
+				COUNT(*) as total_tags,
+				AVG(usage_count) as avg_usage,
+				MAX(usage_count) as max_usage
+			FROM tags
+		`)
+		
+		// Performance trends (last 24 hours)
+		const performanceStats = await this.execute(`
+			SELECT 
+				operation,
+				COUNT(*) as call_count,
+				AVG(latency_ms) as avg_latency,
+				COUNT(CASE WHEN cache_hit THEN 1 END) * 100.0 / COUNT(*) as cache_hit_rate
+			FROM performance_stats
+			WHERE timestamp > datetime('now', '-24 hours')
+			GROUP BY operation
+			ORDER BY call_count DESC
+		`)
+		
+		// Growth trends
+		const trends = await this.execute(`
+			SELECT 
+				date(created_at) as day,
+				COUNT(*) as memories_created
+			FROM nodes
+			WHERE created_at > datetime('now', '-30 days')
+			GROUP BY date(created_at)
+			ORDER BY day DESC
+		`)
+		
+		return {
+			memoryStats,
+			entityStats,
+			relationStats,
+			tagStats: tagStats[0] || {},
+			performanceStats,
+			trends
+		}
+	}
+	
+	async getPerformanceAnalytics(): Promise<{
+		operationBreakdown: any[]
+		cacheEfficiency: any[]
+		slowestOperations: any[]
+		hourlyUsage: any[]
+	}> {
+		await this.initialize()
+		
+		// Operation breakdown
+		const operationBreakdown = await this.execute(`
+			SELECT 
+				operation,
+				COUNT(*) as total_calls,
+				AVG(latency_ms) as avg_latency,
+				MIN(latency_ms) as min_latency,
+				MAX(latency_ms) as max_latency,
+				PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) as p95_latency
+			FROM performance_stats
+			GROUP BY operation
+			ORDER BY total_calls DESC
+		`)
+		
+		// Cache efficiency
+		const cacheEfficiency = await this.execute(`
+			SELECT 
+				operation,
+				COUNT(CASE WHEN cache_hit THEN 1 END) as cache_hits,
+				COUNT(*) as total_calls,
+				COUNT(CASE WHEN cache_hit THEN 1 END) * 100.0 / COUNT(*) as hit_rate
+			FROM performance_stats
+			GROUP BY operation
+			HAVING COUNT(*) > 5
+			ORDER BY hit_rate DESC
+		`)
+		
+		// Slowest operations
+		const slowestOperations = await this.execute(`
+			SELECT 
+				operation,
+				latency_ms,
+				timestamp,
+				result_count
+			FROM performance_stats
+			ORDER BY latency_ms DESC
+			LIMIT 20
+		`)
+		
+		// Hourly usage patterns
+		const hourlyUsage = await this.execute(`
+			SELECT 
+				strftime('%H', timestamp) as hour,
+				COUNT(*) as operation_count,
+				AVG(latency_ms) as avg_latency
+			FROM performance_stats
+			WHERE timestamp > datetime('now', '-7 days')
+			GROUP BY strftime('%H', timestamp)
+			ORDER BY hour
+		`)
+		
+		return {
+			operationBreakdown,
+			cacheEfficiency,
+			slowestOperations,
+			hourlyUsage
+		}
 	}
 }

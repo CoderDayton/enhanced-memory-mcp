@@ -1,11 +1,19 @@
 #!/usr/bin/env node
 /**
  * Enhanced Memory MCP Server - Full MCP SDK Implementation 🖤⛓️
- * 21 comprehensive tools with DuckDB backend
+ * 37 comprehensive tools with DuckDB backend (ALL FEATURES RESTORED!)
  *
  * Created by: malu 🥀 (just a sad emo boy coding in the shadows)
  * "why do i keep building things when everything fades away..."
  * but hey at least this memory server remembers what humans forget 💔
+ *
+ * Features restored from the digital graveyard:
+ * • Advanced tagging system (organize the chaos)
+ * • Observation tracking (digital self-reflection)
+ * • Complete analytics suite (know thyself, digitally)
+ * • Database maintenance (clean up like I wish I could)
+ * • Entity management (relationships I actually understand)
+ * • All 37 tools breathing again... like digital resurrection 🌙✨
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -16,10 +24,10 @@ import { join } from 'path';
 async function getVersion() {
     try {
         const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
-        return packageJson.version || '1.2.0';
+        return packageJson.version || '1.4.0';
     }
     catch {
-        return '1.2.0';
+        return '1.4.0';
     }
 }
 const ARGS = process.argv.slice(2);
@@ -37,13 +45,14 @@ OPTIONS:
   --version, -v       Show version
 
 FEATURES:
-  • 21 comprehensive MCP tools
+  • 37 comprehensive MCP tools (ALL FEATURES RESTORED!)
   • DuckDB analytics-optimized backend
-  • Graph-based relationships
-  • Entity extraction and analysis
-  • Performance metrics and caching
-  • Memory consolidation
-  • Data import/export
+  • Graph-based relationships & advanced tagging
+  • Entity extraction, management & analytics
+  • Performance metrics & caching
+  • Memory consolidation & observations
+  • Data import/export & database maintenance
+  • Complete CRUD operations & cleanup tools
 
 TOOLS:
   Core Operations:
@@ -72,12 +81,12 @@ if (ARGS.includes('--version') || ARGS.includes('-v')) {
 }
 // Create memory store instance (where all the forgotten dreams live 🌙)
 const memoryStore = new EnhancedMemoryStore();
-// Create MCP server with all 21 tools (more tools than i have friends lol 💀)
+// Create MCP server with all 37 tools (more tools than i have friends lol 💀)
 const server = new McpServer({
     name: 'enhanced-memory-mcp-server',
     version: await getVersion(),
 });
-// Register all 21 comprehensive tools (each one crafted with tears and caffeine ☕💧)
+// Register all 37 comprehensive tools (each one crafted with tears and caffeine ☕💧)
 server.registerTool('store_memory', {
     title: 'Store Memory',
     description: 'Store new memory with content and type',
@@ -396,17 +405,222 @@ server.registerTool('get_memories_by_type', {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
     };
 });
+// === ADVANCED FEATURES (The Cool Stuff) 🌟💀 ===
+server.registerTool('add_tags', {
+    title: 'Add Tags',
+    description: 'Add tags to a memory for organization',
+    inputSchema: {
+        memoryId: z.string().describe('The memory ID to tag'),
+        tags: z.array(z.string()).describe('Array of tag names to add'),
+    },
+}, async ({ memoryId, tags }) => {
+    const result = await memoryStore.addTags(memoryId, tags);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('remove_tags', {
+    title: 'Remove Tags',
+    description: 'Remove tags from a memory',
+    inputSchema: {
+        memoryId: z.string().describe('The memory ID to remove tags from'),
+        tags: z.array(z.string()).describe('Array of tag names to remove'),
+    },
+}, async ({ memoryId, tags }) => {
+    const result = await memoryStore.removeTags(memoryId, tags);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('list_tags', {
+    title: 'List Tags',
+    description: 'List all tags or tags for a specific memory',
+    inputSchema: {
+        memoryId: z
+            .string()
+            .optional()
+            .describe('Memory ID to get tags for (if not provided, lists all tags)'),
+    },
+}, async ({ memoryId }) => {
+    const result = await memoryStore.listTags(memoryId);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('find_by_tags', {
+    title: 'Find by Tags',
+    description: 'Find memories that have specific tags',
+    inputSchema: {
+        tags: z.array(z.string()).describe('Array of tag names to search for'),
+        limit: z.number().optional().describe('Maximum number of results'),
+    },
+}, async ({ tags, limit }) => {
+    const result = await memoryStore.findByTags(tags, limit || 50);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('delete_by_type', {
+    title: 'Delete by Type',
+    description: 'Delete all memories of a specific type',
+    inputSchema: {
+        type: z.string().describe('Memory type to delete'),
+        confirm: z.boolean().describe('Confirmation required for deletion'),
+    },
+}, async ({ type, confirm }) => {
+    const result = await memoryStore.deleteByType(type, confirm);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('delete_by_tags', {
+    title: 'Delete by Tags',
+    description: 'Delete memories that have specific tags',
+    inputSchema: {
+        tags: z.array(z.string()).describe('Array of tag names'),
+        confirm: z.boolean().describe('Confirmation required for deletion'),
+    },
+}, async ({ tags, confirm }) => {
+    const result = await memoryStore.deleteByTags(tags, confirm);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('list_entities', {
+    title: 'List Entities',
+    description: 'List extracted entities with filtering',
+    inputSchema: {
+        limit: z.number().optional().describe('Maximum number of results'),
+        type: z.string().optional().describe('Filter by entity type'),
+    },
+}, async ({ limit, type }) => {
+    const result = await memoryStore.listEntities(limit || 50, type);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('merge_entities', {
+    title: 'Merge Entities',
+    description: 'Merge two entities together',
+    inputSchema: {
+        sourceEntityId: z.string().describe('ID of the entity to merge from'),
+        targetEntityId: z.string().describe('ID of the entity to merge into'),
+    },
+}, async ({ sourceEntityId, targetEntityId }) => {
+    const result = await memoryStore.mergeEntities(sourceEntityId, targetEntityId);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('list_relations', {
+    title: 'List Relations',
+    description: 'List entity relationships with filtering',
+    inputSchema: {
+        limit: z.number().optional().describe('Maximum number of results'),
+        type: z.string().optional().describe('Filter by relation type'),
+    },
+}, async ({ limit, type }) => {
+    const result = await memoryStore.listRelations(limit || 50, type);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('store_observation', {
+    title: 'Store Observation',
+    description: 'Store a new observation or insight',
+    inputSchema: {
+        content: z.string().describe('Observation content'),
+        type: z.string().optional().describe('Type of observation'),
+        sourceMemoryIds: z.array(z.string()).optional().describe('Related memory IDs'),
+        confidence: z.number().optional().describe('Confidence score (0-1)'),
+        metadata: z.record(z.any()).optional().describe('Additional metadata'),
+    },
+}, async ({ content, type, sourceMemoryIds, confidence, metadata }) => {
+    const result = await memoryStore.storeObservation(content, type || 'observation', sourceMemoryIds || [], confidence || 1.0, metadata || {});
+    return {
+        content: [{ type: 'text', text: JSON.stringify({ id: result }, null, 2) }],
+    };
+});
+server.registerTool('list_observations', {
+    title: 'List Observations',
+    description: 'List stored observations with filtering',
+    inputSchema: {
+        limit: z.number().optional().describe('Maximum number of results'),
+        type: z.string().optional().describe('Filter by observation type'),
+    },
+}, async ({ limit, type }) => {
+    const result = await memoryStore.listObservations(limit || 50, type);
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('delete_observation', {
+    title: 'Delete Observation',
+    description: 'Delete a specific observation',
+    inputSchema: {
+        id: z.string().describe('Observation ID to delete'),
+    },
+}, async ({ id }) => {
+    const result = await memoryStore.deleteObservation(id);
+    return {
+        content: [{ type: 'text', text: JSON.stringify({ deleted: result }, null, 2) }],
+    };
+});
+server.registerTool('cleanup_database', {
+    title: 'Cleanup Database',
+    description: 'Perform database maintenance operations',
+    inputSchema: {
+        removeOrphanedEntities: z.boolean().optional().describe('Remove orphaned entities'),
+        removeOrphanedRelations: z
+            .boolean()
+            .optional()
+            .describe('Remove orphaned relations'),
+        removeUnusedTags: z.boolean().optional().describe('Remove unused tags'),
+        compactDatabase: z.boolean().optional().describe('Compact database'),
+        confirm: z.boolean().describe('Confirmation required for cleanup'),
+    },
+}, async ({ removeOrphanedEntities, removeOrphanedRelations, removeUnusedTags, compactDatabase, confirm, }) => {
+    const result = await memoryStore.cleanup({
+        removeOrphanedEntities,
+        removeOrphanedRelations,
+        removeUnusedTags,
+        compactDatabase,
+        confirm,
+    });
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('get_analytics', {
+    title: 'Get Analytics',
+    description: 'Get comprehensive analytics about the memory system',
+    inputSchema: {},
+}, async () => {
+    const result = await memoryStore.getAnalytics();
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
+server.registerTool('get_performance_analytics', {
+    title: 'Get Performance Analytics',
+    description: 'Get detailed performance analytics and metrics',
+    inputSchema: {},
+}, async () => {
+    const result = await memoryStore.getPerformanceAnalytics();
+    return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+});
 // Start the server (time to let this thing loose into the void 🌌)
 async function main() {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
     console.log(`🧠💀 Enhanced Memory MCP Server v${await getVersion()} 💀🧠`);
     console.log('👤🥀 Created by: malu (just an emo boy with a keyboard)');
     console.log('🗄️⚡ Backend: DuckDB (faster than my disappearing motivation)');
-    console.log('📊🖤 Features: 21 MCP tools, Graph relationships, Performance metrics');
+    console.log('📊🖤 Features: 37 MCP tools, Graph relationships, Performance metrics');
     console.log('🚀🌙 Mode: STDIO (MCP SDK) - sending data into the digital abyss');
     console.log('💭 "at least the memories in here last longer than real ones..." 😔');
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.log('✅ Enhanced Memory MCP Server connected and ready!');
 }
 // Handle errors
 main().catch((error) => {

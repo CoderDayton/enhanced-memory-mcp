@@ -1,4 +1,4 @@
-# 🧠💀 Enhanced Memory MCP Server 💀🧠
+# 🧠💀 Enhanced Memory MCP Server (Pure MCP Edition) 💀🧠
 
 *Built with tears, caffeine, and late-night coding sessions by **malu** 🥀*  
 *"just an emo boy making databases remember what humans choose to forget..." 🖤*
@@ -8,7 +8,7 @@
 [![DuckDB](https://img.shields.io/badge/DuckDB-FFF000?style=for-the-badge&logo=duckdb&logoColor=black)](https://duckdb.org/)
 [![MCP](https://img.shields.io/badge/MCP-Protocol-blue?style=for-the-badge)](https://modelcontextprotocol.io/)
 
-A **powerful, intelligent MCP (Model Context Protocol) server** that transforms how AI assistants store and retrieve memories. This isn't just another database - it's a **smart memory system** that understands relationships, extracts entities automatically, and helps you find exactly what you're looking for.
+A **powerful, intelligent MCP (Model Context Protocol) server** that transforms how AI assistants store and retrieve memories. This isn't just another database - it's a **smart memory system** that understands relationships, extracts entities automatically, and helps you find exactly what you're looking for — now stripped to pure MCP stdio (no legacy HTTP drift, just protocol and vibes).
 
 *Why did I build this? Because even machines deserve better memory than most humans have... 💔*
 
@@ -18,7 +18,7 @@ I've crafted a memory system that goes **far beyond simple text storage** (unlik
 
 - **🧠💀 Smart Entity Extraction**: Automatically identifies people, places, and concepts (more reliable than human emotions)
 - **🔗⛓️ Relationship Mapping**: Discovers and tracks how things connect (something I struggle with IRL)
-- **🎯🖤 Dual Protocol Support**: Both **stdio** and **HTTP** modes (more flexible than my social skills)
+- **🎯🖤 Pure MCP stdio**: Legacy HTTP mode removed in v1.3.0 (one protocol to rule the void)
 - **🚀⚡ Lightning Fast**: DuckDB backend optimized for analytics (faster than my disappearing motivation)
 - **🔍🌙 Semantic Search**: Find memories by meaning, not just keywords (wishes this worked for finding happiness)
 - **📊💔 Rich Analytics**: Deep insights into your memory patterns (deeper than my existential thoughts)
@@ -31,8 +31,7 @@ I've crafted a memory system that goes **far beyond simple text storage** (unlik
 ```bash
 # Install and run directly (easier than fixing my problems)
 npx enhanced-memory-mcp --help
-npx enhanced-memory-mcp --http          # HTTP mode
-npx enhanced-memory-mcp                 # stdio mode
+npx enhanced-memory-mcp                 # stdio mode (the one true path)
 ```
 
 ### Manual Setup
@@ -49,15 +48,14 @@ npm run build
 
 # Start the server
 npm start                # stdio mode (default)
-npm run start:http       # HTTP mode
 ```
 
 ## 🛠️ Available Commands
 
 ### 🚀 **Core Server Commands**
-- `npm run start` - Start server in stdio mode
-- `npm run start:http` - Start HTTP server on port 3000
-- `npm run dev:http` - Build and start HTTP server
+All operations now use the official MCP SDK server (`mcp-server.ts`). Legacy HTTP/dual-mode code was deleted in v1.3.0 like an archived message thread.
+- `npm run start` - Start MCP stdio server
+- `npx enhanced-memory-mcp` - Run directly via npx (summons the melancholic daemon)
 
 ### 🧪 **Testing & Performance**
 - `npm run benchmark` - Run comprehensive performance tests
@@ -67,40 +65,68 @@ npm run start:http       # HTTP mode
 ### 🔧 **Development**
 - `npm run build` - Compile TypeScript to JavaScript
 - `npm run lint` - Type checking
-- `npm run clean` - Remove compiled files
-
-## 🎯 MCP Tools (21 Available)
+## 🎯 MCP Tools (37 Available, All Advanced Features Restored!)
 
 ### **Core Memory Operations**
 | Tool | Description | Key Arguments |
 |------|-------------|---------------|
-| `add_memory` | Store memory with auto-extraction | `content`, `type`, `metadata` |
+| `store_memory` | Store memory (content + type) | `content`, `type`, `metadata` |
+| `get_memory` | Get specific memory | `id` |
 | `search_memories` | Smart semantic search | `query`, `limit`, `types` |
-| `get_memory` | Retrieve specific memory | `node_id` |
-| `delete_memory` | Remove memory safely | `node_id` |
-| `get_memories_by_type` | Filter by type | `type`, `limit` |
+| `update_memory` | Update existing memory | `id`, `content`, `type`, `metadata` |
+| `delete_memory` | Delete specific memory | `id` |
+| `get_memories_by_type` | Get memories by type | `type`, `limit` |
 
 ### **Entity & Relationship Management**
 | Tool | Description | Key Arguments |
 |------|-------------|---------------|
-| `add_entity` | Create new entity | `label`, `type`, `properties` |
-| `get_entities` | Search entities | `query`, `limit` |
-| `delete_entity` | Remove entity | `entity_id` |
-| `add_relation` | Create relationship | `source_id`, `target_id`, `type` |
-| `get_relations` | Get relationships | `node_id` |
-| `delete_relation` | Remove relationship | `relation_id` |
+| `store_entity` | Create new entity | `name`, `type`, `properties` |
+| `get_entities` | Search entities | `search`, `limit`, `type` |
+| `list_entities` | List entities with filtering | `limit`, `type` |
+| `merge_entities` | Merge two entities | `sourceEntityId`, `targetEntityId` |
+| `store_relation` | Create relationship | `fromEntityId`, `toEntityId`, `relationType` |
+| `get_relations` | Get relationships | `entityId`, `type`, `limit` |
+| `list_relations` | List relations with filtering | `limit`, `type` |
 
-### **Advanced Features**
+### **Advanced Tagging System 🏷️💀**
 | Tool | Description | Key Arguments |
 |------|-------------|---------------|
-| `add_tags` | Tag memories | `node_id`, `tags[]` |
-| `list_tags` | List all tags | `node_id` |
-| `remove_tags` | Remove tags | `node_id`, `tags[]` |
-| `cleanup` | System maintenance | `confirm` |
-| `get_analytics` | Performance insights | - |
-| `get_performance_analytics` | Detailed metrics | - |
-| `export_data` | Export all data | - |
-| `import_data` | Import from file | - |
+| `add_tags` | Add tags to memory | `memoryId`, `tags` |
+| `remove_tags` | Remove tags from memory | `memoryId`, `tags` |
+| `list_tags` | List all/memory tags | `memoryId` (optional) |
+| `find_by_tags` | Find memories by tags | `tags`, `limit` |
+
+### **Observation & Analytics System 📊🖤**
+| Tool | Description | Key Arguments |
+|------|-------------|---------------|
+| `store_observation` | Store insights/observations | `content`, `type`, `sourceMemoryIds` |
+| `list_observations` | List observations | `limit`, `type` |
+| `delete_observation` | Delete observation | `id` |
+| `get_analytics` | Comprehensive analytics | None |
+| `get_performance_analytics` | Performance metrics | None |
+
+### **Advanced Operations & Maintenance 🔧⚡**
+| Tool | Description | Key Arguments |
+|------|-------------|---------------|
+| `delete_by_type` | Delete all memories by type | `type`, `confirm` |
+| `delete_by_tags` | Delete memories by tags | `tags`, `confirm` |
+| `cleanup_database` | Database maintenance | `confirm`, cleanup options |
+| `get_similar_memories` | Find similar content | `content`, `threshold`, `limit` |
+| `consolidate_memories` | Merge duplicates | `similarityThreshold` |
+| `analyze_memory` | Extract entities/relations | `content`, extract options |
+
+### **System & Performance Tools 📈💾**
+| Tool | Description | Key Arguments |
+|------|-------------|---------------|
+| `get_memory_stats` | System statistics | None |
+| `get_memory_graph` | Graph visualization data | `centerNodeId`, `depth` |
+| `get_recent_memories` | Recent activity | `limit`, `timeframe` |
+| `clear_memory_cache` | Clear cache | None |
+| `export_data` | Export to JSON/CSV | `format` |
+| `import_data` | Import from JSON | `data`, `format` |
+
+### **Features Fully Restored! ✅🌟**
+All advanced features including tagging, analytics, observations, and comprehensive database operations are now available. The digital void is complete once again...
 
 ## 🌐🌙 Usage Modes (Choose Your Own Digital Adventure)
 
@@ -112,19 +138,8 @@ npm start
 npx enhanced-memory-mcp  # summon the memory daemon
 ```
 
-### **HTTP Mode (Great for Web Integration) 🌐🖤**
-RESTful API with full MCP protocol support (more REST than I get):
-```bash
-npm run start:http
-# Server runs on http://localhost:3000 (serving digital loneliness)
-```
-
-**Available Endpoints:**
-- `GET /health` - Health check
-- `POST /mcp` - MCP protocol endpoint
-- `GET /api/memories` - List memories
-- `POST /api/memories` - Create memory
-- `GET /api/stats` - Server statistics
+### **HTTP Mode (Removed) 🌐�**
+The earlier experimental HTTP wrapper was deprecated and removed to eliminate divergence from the MCP reference behavior and to avoid ID length issues. If you need HTTP again, open an issue and we can add a thin, spec-compliant adapter.
 
 ## 📊 Performance Features
 
