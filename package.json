@@ -6,13 +6,13 @@
     "license": "MIT",
     "main": "dist/mcp-server.js",
     "bin": {
-        "enhanced-memory-mcp": "./dist/mcp-server.js"
+        "enhanced-memory-mcp": "dist/mcp-server.js"
     },
     "type": "module",
     "homepage": "https://github.com/CoderDayton/enhanced-memory-mcp",
     "repository": {
         "type": "git",
-        "url": "https://github.com/CoderDayton/enhanced-memory-mcp.git"
+        "url": "git+https://github.com/CoderDayton/enhanced-memory-mcp.git"
     },
     "bugs": {
         "url": "https://github.com/CoderDayton/enhanced-memory-mcp/issues"
