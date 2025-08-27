@@ -2,7 +2,20 @@
 
 *"tracking changes like I track my deteriorating mental health..." 🥀*
 
-## v1.4.5 (20-Tool Consolidated Architecture) - Current 🌟💀✨
+## v1.4.6 (Environment Cleanup) - Current 🌟💀✨
+
+### 🧹 Configuration Cleanup (Digital Organization)
+- **Environment Variables**: Cleaned up .env and .env.example files with consistent, usable variables
+- **Streamlined Config**: Removed unused variables, aligned with documented configuration options
+- **Production Ready**: Clean environment setup for deployment and development
+- **Documentation Sync**: Environment variables now match README documentation
+
+### 📦 Maintenance Update (Keeping the Void Tidy)
+- **Version Bump**: Updated all version references to v1.4.6
+- **Clean Configuration**: Simplified environment variable structure
+- **Better Organization**: Aligned configuration with actual usage patterns
+
+## v1.4.5 (20-Tool Consolidated Architecture) - Previous 🌟💀✨
 
 ### 🎯 Revolutionary Consolidation (From Chaos to Order)
 - **20 Unified Tools**: Consolidated 42+ individual tools into 20 powerful, operation-based tools with unified interfaces

@@ -4,7 +4,10 @@
  * 20 optimized tools (reduced from 42) with unified interfaces
  */
 // Add BigInt serialization support
-BigInt.prototype.toJSON = function () { return Number(this); };
+;
+BigInt.prototype.toJSON = function () {
+    return Number(this);
+};
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -12,7 +15,7 @@ import { EnhancedMemoryStore } from './enhanced-memory-store.js';
 const memoryStore = new EnhancedMemoryStore();
 const server = new McpServer({
     name: 'enhanced-memory-mcp',
-    version: '1.4.5',
+    version: '1.4.6',
 });
 // === CORE MEMORY OPERATIONS ===
 server.registerTool('memory', {
@@ -24,11 +27,13 @@ server.registerTool('memory', {
         content: z.string().optional(),
         type: z.string().optional(),
         metadata: z.record(z.any()).optional(),
-        filters: z.object({
+        filters: z
+            .object({
             type: z.string().optional(),
             limit: z.number().default(50).optional(),
             timeframe: z.enum(['hour', 'day', 'week']).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
 }, async ({ operation, id, content, type, metadata, filters }) => {
     let result;
@@ -82,15 +87,23 @@ server.registerTool('search', {
     description: 'Multi-strategy search with autocomplete and filtering',
     inputSchema: {
         query: z.string(),
-        strategy: z.enum(['exact', 'fuzzy', 'semantic', 'hybrid']).default('hybrid').optional(),
-        fields: z.array(z.enum(['content', 'metadata', 'tags'])).default(['content']).optional(),
-        filters: z.object({
+        strategy: z
+            .enum(['exact', 'fuzzy', 'semantic', 'hybrid'])
+            .default('hybrid')
+            .optional(),
+        fields: z
+            .array(z.enum(['content', 'metadata', 'tags']))
+            .default(['content'])
+            .optional(),
+        filters: z
+            .object({
             type: z.string().optional(),
             limit: z.number().default(10).optional(),
             minImportance: z.number().default(0.0).optional(),
             startDate: z.string().optional(),
             endDate: z.string().optional(),
-        }).optional(),
+        })
+            .optional(),
         suggestions: z.boolean().default(false).optional(),
     },
 }, async ({ query, strategy, fields, filters, suggestions }) => {
@@ -99,10 +112,14 @@ server.registerTool('search', {
         result = await memoryStore.autoComplete(query, filters?.limit || 10);
     }
     else if (filters?.startDate && filters?.endDate) {
-        result = await memoryStore.searchByDateRange(filters.startDate, filters.endDate, { limit: filters.limit });
+        result = await memoryStore.searchByDateRange(filters.startDate, filters.endDate, {
+            limit: filters.limit,
+        });
     }
     else if (fields && fields.length > 1) {
-        result = await memoryStore.multiFieldSearch(query, fields, { limit: filters?.limit || 10 });
+        result = await memoryStore.multiFieldSearch(query, fields, {
+            limit: filters?.limit || 10,
+        });
     }
     else {
         result = await memoryStore.searchMemories(query, {
@@ -126,11 +143,13 @@ server.registerTool('entity', {
         type: z.string().optional(),
         properties: z.record(z.any()).optional(),
         confidence: z.number().default(1.0).optional(),
-        filters: z.object({
+        filters: z
+            .object({
             type: z.string().optional(),
             search: z.string().optional(),
             limit: z.number().default(50).optional(),
-        }).optional(),
+        })
+            .optional(),
         mergeTarget: z.string().optional(),
     },
 }, async ({ operation, id, name, type, properties, confidence, filters, mergeTarget }) => {
@@ -175,13 +194,15 @@ server.registerTool('relation', {
         relationType: z.string().optional(),
         strength: z.number().default(1.0).optional(),
         properties: z.record(z.any()).optional(),
-        filters: z.object({
+        filters: z
+            .object({
             type: z.string().optional(),
             entityId: z.string().optional(),
             limit: z.number().default(50).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
-}, async ({ operation, id, fromEntityId, toEntityId, relationType, strength, properties, filters }) => {
+}, async ({ operation, id, fromEntityId, toEntityId, relationType, strength, properties, filters, }) => {
     let result;
     switch (operation) {
         case 'create':
@@ -215,9 +236,11 @@ server.registerTool('tag', {
         operation: z.enum(['add', 'remove', 'list', 'find']),
         memoryId: z.string().optional(),
         tags: z.array(z.string()).optional(),
-        filters: z.object({
+        filters: z
+            .object({
             limit: z.number().default(50).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
 }, async ({ operation, memoryId, tags, filters }) => {
     let result;
@@ -251,12 +274,17 @@ server.registerTool('analyze', {
     description: 'Multi-modal content analysis',
     inputSchema: {
         content: z.string(),
-        operations: z.array(z.enum(['entities', 'relations', 'similarity', 'consolidation'])).default(['entities', 'relations']).optional(),
-        options: z.object({
+        operations: z
+            .array(z.enum(['entities', 'relations', 'similarity', 'consolidation']))
+            .default(['entities', 'relations'])
+            .optional(),
+        options: z
+            .object({
             similarityThreshold: z.number().default(0.7).optional(),
             consolidationThreshold: z.number().default(0.8).optional(),
             limit: z.number().default(5).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
 }, async ({ content, operations, options }) => {
     const result = {};
@@ -291,12 +319,14 @@ server.registerTool('observation', {
         sourceMemoryIds: z.array(z.string()).optional(),
         confidence: z.number().default(1.0).optional(),
         metadata: z.record(z.any()).optional(),
-        filters: z.object({
+        filters: z
+            .object({
             type: z.string().optional(),
             limit: z.number().default(50).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
-}, async ({ operation, id, content, type, sourceMemoryIds, confidence, metadata, filters }) => {
+}, async ({ operation, id, content, type, sourceMemoryIds, confidence, metadata, filters, }) => {
     let result;
     switch (operation) {
         case 'create':
@@ -369,13 +399,15 @@ server.registerTool('maintenance', {
     description: 'Database optimization and cleanup',
     inputSchema: {
         operation: z.enum(['cleanup', 'rebuild_indexes', 'clear_cache']),
-        options: z.object({
+        options: z
+            .object({
             removeOrphanedEntities: z.boolean().default(false).optional(),
             removeOrphanedRelations: z.boolean().default(false).optional(),
             removeUnusedTags: z.boolean().default(false).optional(),
             compactDatabase: z.boolean().default(false).optional(),
             confirm: z.boolean().default(false).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
 }, async ({ operation, options }) => {
     let result;
@@ -597,7 +629,12 @@ server.registerTool('backup', {
         case 'create':
             // Use export functionality for backup
             result = await memoryStore.exportData('json');
-            result = { backupId: Date.now().toString(), description, data: result, created: new Date() };
+            result = {
+                backupId: Date.now().toString(),
+                description,
+                data: result,
+                created: new Date(),
+            };
             break;
         case 'restore':
             if (!backupId)
@@ -643,11 +680,13 @@ server.registerTool('workflow', {
     description: 'Automated workflow and process management',
     inputSchema: {
         operation: z.enum(['auto_tag', 'auto_consolidate', 'auto_cleanup']),
-        options: z.object({
+        options: z
+            .object({
             dryRun: z.boolean().default(true).optional(),
             threshold: z.number().default(0.8).optional(),
             maxActions: z.number().default(100).optional(),
-        }).optional(),
+        })
+            .optional(),
     },
 }, async ({ operation, options }) => {
     let result;
@@ -670,14 +709,14 @@ server.registerTool('workflow', {
             result = {
                 operation: 'auto_consolidate',
                 dryRun: opts.dryRun,
-                ...consolidationResult
+                ...consolidationResult,
             };
             break;
         case 'auto_cleanup':
             const cleanupResult = await memoryStore.cleanup({
                 removeOrphanedEntities: true,
                 removeOrphanedRelations: true,
-                confirm: !opts.dryRun
+                confirm: !opts.dryRun,
             });
             result = { operation: 'auto_cleanup', ...cleanupResult, dryRun: opts.dryRun };
             break;
@@ -690,7 +729,7 @@ server.registerTool('workflow', {
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.log('🧠 Enhanced Memory MCP Server v1.4.5');
+    console.log('🧠 Enhanced Memory MCP Server v1.4.6');
     console.log('📊 Tools: 20 optimized tools with unified interfaces');
     console.log('🔍 Features: Advanced search, entity extraction, graph relationships');
     console.log('🚀 Mode: STDIO (MCP SDK)');

@@ -1,6 +1,7 @@
 import { DuckDBConnection, DuckDBInstance } from '@duckdb/node-api';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
+import { config } from 'dotenv';
 import {
 	MemoryNode,
 	Entity,
@@ -12,6 +13,25 @@ import {
 	CacheEntry,
 	CacheStats,
 } from './types.js'
+
+// Load environment variables
+config();
+
+// Configuration with environment variable support
+const CONFIG = {
+	DATABASE_PATH: process.env.DATABASE_PATH || 'data/memory.duckdb',
+	BACKUP_PATH: process.env.BACKUP_PATH || 'backups/',
+	CACHE_SIZE: parseInt(process.env.CACHE_SIZE || '1000'),
+	CACHE_EXPIRY_MS: parseInt(process.env.CACHE_EXPIRY_MS || '300000'),
+	MAX_SEARCH_RESULTS: parseInt(process.env.MAX_SEARCH_RESULTS || '100'),
+	DEFAULT_SIMILARITY_LIMIT: parseInt(process.env.DEFAULT_SIMILARITY_LIMIT || '5'),
+	SIMILARITY_THRESHOLD: parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7'),
+	DEFAULT_SEARCH_LIMIT: parseInt(process.env.DEFAULT_SEARCH_LIMIT || '50'),
+	ENABLE_PERFORMANCE_MONITORING: process.env.ENABLE_PERFORMANCE_MONITORING === 'true',
+	ANALYTICS_RETENTION_DAYS: parseInt(process.env.ANALYTICS_RETENTION_DAYS || '30'),
+	LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+	NODE_ENV: process.env.NODE_ENV || 'production',
+};
 
 /**
  * Generate a short, unique ID suitable for MCP protocol (max 32 chars)
@@ -263,8 +283,8 @@ export class EnhancedMemoryStore {
 
 	// Performance caching layer
 	private queryCache = new Map<string, CacheEntry>()
-	private readonly maxCacheSize = 1000
-	private readonly cacheExpiry = 5 * 60 * 1000 // 5 minutes
+	private readonly maxCacheSize = Number(CONFIG.CACHE_SIZE) || 1000
+	private readonly cacheExpiry = Number(CONFIG.CACHE_EXPIRY_MS) || (5 * 60 * 1000) // 5 minutes default
 
 	// Performance tracking
 	private metrics: PerformanceMetrics = {
@@ -289,7 +309,7 @@ export class EnhancedMemoryStore {
 		hybrid: new HybridSearchEngine()
 	}
 
-	constructor(private dbPath = 'data/memory.duckdb') {}
+	constructor(private dbPath = CONFIG.DATABASE_PATH) {}
 
 	async initialize(): Promise<void> {
 		if (this.isInitialized) return
@@ -601,7 +621,7 @@ export class EnhancedMemoryStore {
 		}
 	}
 
-	async getSimilarMemories(content: string, limit = 5, threshold = 0.7): Promise<MemoryNode[]> {
+	async getSimilarMemories(content: string, limit = CONFIG.DEFAULT_SIMILARITY_LIMIT, threshold = CONFIG.SIMILARITY_THRESHOLD): Promise<MemoryNode[]> {
 		// Use semantic search for better similarity matching
 		const searchResult = await this.searchMemories(content, { 
 			searchType: 'semantic', 
@@ -713,7 +733,7 @@ export class EnhancedMemoryStore {
 		try {
 			await this.initialize()
 			
-			const limit = options.limit || 50
+			const limit = options.limit || CONFIG.DEFAULT_SEARCH_LIMIT
 			const result = await this.execute(`
 				SELECT * FROM nodes 
 				WHERE created_at BETWEEN ? AND ?

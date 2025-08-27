@@ -19,7 +19,7 @@ const memoryStore = new EnhancedMemoryStore()
 
 const server = new McpServer({
 	name: 'enhanced-memory-mcp',
-	version: '1.4.5',
+	version: '1.4.6',
 })
 
 // === CORE MEMORY OPERATIONS ===
@@ -900,7 +900,7 @@ server.registerTool(
 async function main() {
 	const transport = new StdioServerTransport()
 	await server.connect(transport)
-	console.log('🧠 Enhanced Memory MCP Server v1.4.5')
+	console.log('🧠 Enhanced Memory MCP Server v1.4.6')
 	console.log('📊 Tools: 20 optimized tools with unified interfaces')
 	console.log('🔍 Features: Advanced search, entity extraction, graph relationships')
 	console.log('🚀 Mode: STDIO (MCP SDK)')
