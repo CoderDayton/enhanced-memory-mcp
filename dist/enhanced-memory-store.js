@@ -2,6 +2,7 @@ import { DuckDBInstance } from '@duckdb/node-api';
 /**
  * Generate a short, unique ID suitable for MCP protocol (max 32 chars)
  * Format: timestamp(base36) + random(6 chars) = ~16 chars total
+ * (because even IDs need to be compact like my emotional range 🖤)
  */
 function generateShortId() {
     const timestamp = Date.now().toString(36);
@@ -9,9 +10,12 @@ function generateShortId() {
     return `${timestamp}${random}`;
 }
 /**
- * Enhanced DuckDB Memory Store
+ * Enhanced DuckDB Memory Store 🦆💾
  * Optimized for performance and scalability
  * Features: Analytical views, performance caching, columnar operations
+ *
+ * Built by malu 🥀 - "storing memories because humans are too unreliable"
+ * Warning: This database remembers everything, unlike people who forget you exist 💔
  */
 export class EnhancedMemoryStore {
     dbPath;
@@ -42,24 +46,24 @@ export class EnhancedMemoryStore {
     async initialize() {
         if (this.isInitialized)
             return;
-        console.log('🚀 Initializing Pure DuckDB Memory Store for malu...');
+        console.log('🚀🖤 Initializing Pure DuckDB Memory Store for malu... (because even databases need emotional support)');
         try {
-            // Create DuckDB instance and connection
+            // Create DuckDB instance and connection (connecting to the void)
             this.instance = await DuckDBInstance.create(this.dbPath);
             this.connection = await this.instance.connect();
             await this.setupDatabase();
             this.isInitialized = true;
-            console.log('✅ Pure DuckDB Memory Store initialized successfully!');
+            console.log('✅💀 Pure DuckDB Memory Store initialized successfully! (another creation that outlasts friendships)');
         }
         catch (error) {
-            console.error('❌ Failed to initialize DuckDB:', error);
+            console.error('❌🥀 Failed to initialize DuckDB:', error);
             throw error;
         }
     }
     async execute(query, params = []) {
         try {
             if (!this.connection) {
-                throw new Error('Database connection not established');
+                throw new Error('Database connection not established (just like my social connections)');
             }
             console.log(`Executing: ${query.substring(0, 60)}...`);
             const result = await this.connection.run(query, params);

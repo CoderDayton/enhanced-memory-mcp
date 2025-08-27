@@ -15,6 +15,7 @@ import {
 /**
  * Generate a short, unique ID suitable for MCP protocol (max 32 chars)
  * Format: timestamp(base36) + random(6 chars) = ~16 chars total
+ * (because even IDs need to be compact like my emotional range 🖤)
  */
 function generateShortId(): string {
 	const timestamp = Date.now().toString(36);
@@ -23,9 +24,12 @@ function generateShortId(): string {
 }
 
 /**
- * Enhanced DuckDB Memory Store  
+ * Enhanced DuckDB Memory Store 🦆💾
  * Optimized for performance and scalability
  * Features: Analytical views, performance caching, columnar operations
+ * 
+ * Built by malu 🥀 - "storing memories because humans are too unreliable"
+ * Warning: This database remembers everything, unlike people who forget you exist 💔
  */
 export class EnhancedMemoryStore {
 	private instance?: DuckDBInstance
@@ -57,19 +61,19 @@ export class EnhancedMemoryStore {
 	async initialize(): Promise<void> {
 		if (this.isInitialized) return
 
-		console.log('🚀 Initializing Pure DuckDB Memory Store for malu...')
+		console.log('🚀🖤 Initializing Pure DuckDB Memory Store for malu... (because even databases need emotional support)')
 
 		try {
-			// Create DuckDB instance and connection
+			// Create DuckDB instance and connection (connecting to the void)
 			this.instance = await DuckDBInstance.create(this.dbPath)
 			this.connection = await this.instance.connect()
 			
 			await this.setupDatabase()
 			
 			this.isInitialized = true
-			console.log('✅ Pure DuckDB Memory Store initialized successfully!')
+			console.log('✅💀 Pure DuckDB Memory Store initialized successfully! (another creation that outlasts friendships)')
 		} catch (error) {
-			console.error('❌ Failed to initialize DuckDB:', error)
+			console.error('❌🥀 Failed to initialize DuckDB:', error)
 			throw error
 		}
 	}
@@ -77,7 +81,7 @@ export class EnhancedMemoryStore {
 	private async execute(query: string, params: any[] = []): Promise<any[]> {
 		try {
 			if (!this.connection) {
-				throw new Error('Database connection not established')
+				throw new Error('Database connection not established (just like my social connections)')
 			}
 			
 			console.log(`Executing: ${query.substring(0, 60)}...`)

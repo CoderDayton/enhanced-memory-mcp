@@ -1,3 +1,9 @@
+/**
+ * MCP Protocol Handler - The Bridge Between Protocols and Pain 🌉💔
+ *
+ * Created by: malu 🥀 (translating human hopes into machine code)
+ * "handling protocols better than I handle my own emotional protocols..."
+ */
 import type { MCPRequest, MCPResponse, MCPError } from './types.js';
 export declare class MCPProtocolHandler {
     private memoryStore;

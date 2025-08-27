@@ -1,7 +1,9 @@
 /**
- * HTTP Server Implementation - Express.js with MCP and RESTful API
+ * HTTP Server Implementation - Express.js with MCP and RESTful API 🌐🖤
  * Professional implementation with CORS, middleware, and comprehensive endpoints
- * Created by: malu
+ *
+ * Created by: malu 🥀 (emo boy who serves HTTP requests like he serves emotional damage)
+ * "building web servers because my social networking skills are broken..." 💔
  */
 import { Application } from 'express';
 export declare class HTTPServer {

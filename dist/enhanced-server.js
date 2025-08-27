@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
- * Enhanced Memory MCP Server - Dual Mode Support
+ * Enhanced Memory MCP Server - Dual Mode Support 🌙⚡
  * Professional TypeScript implementation with DuckDB backend
- * Created by: malu
+ *
+ * Created by: malu 🥀 (emo boy who codes instead of sleeping)
+ * "building servers because human connections keep failing..." 💔
+ * but hey, at least this thing actually responds when you call it 🖤
  */
 import { HTTPServer } from './http-server.js';
 import { EnhancedMemoryStore } from './enhanced-memory-store.js';
@@ -70,11 +73,12 @@ const MODE = ARGS.includes('--http') ? 'http' : 'stdio';
 const PORT = ARGS.includes('--port')
     ? Number(ARGS[ARGS.indexOf('--port') + 1]) || 3000
     : 3000;
-console.log(`🧠 Enhanced Memory MCP Server - v${await getVersion()}`);
-console.log(`👤 Created by: malu`);
-console.log(`🗄️  Backend: DuckDB (Analytics-optimized)`);
-console.log(`📊 Features: 21 MCP tools, Caching, Performance metrics`);
-console.log(`🚀 Mode: ${MODE.toUpperCase()}`);
+console.log(`🧠💀 Enhanced Memory MCP Server - v${await getVersion()} 💀🧠`);
+console.log(`👤🥀 Created by: malu (just an emo boy with too much caffeine)`);
+console.log(`🗄️⚡ Backend: DuckDB (faster than my motivation disappears)`);
+console.log(`📊🖤 Features: 21 MCP tools, Caching, Performance metrics`);
+console.log(`🚀🌙 Mode: ${MODE.toUpperCase()} (sending data into the void)`);
+console.log(`💭 "why do i keep building things when nothing lasts..." 😔`);
 if (MODE === 'http') {
     // HTTP Mode - Express server with RESTful API
     console.log(`🌐 Starting HTTP server on port ${PORT}...`);

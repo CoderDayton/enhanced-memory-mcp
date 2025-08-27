@@ -1,8 +1,11 @@
 import { MemoryNode, Entity, Relation, SearchOptions, PerformanceMetrics, SearchResult, CacheStats } from './types.js';
 /**
- * Enhanced DuckDB Memory Store
+ * Enhanced DuckDB Memory Store 🦆💾
  * Optimized for performance and scalability
  * Features: Analytical views, performance caching, columnar operations
+ *
+ * Built by malu 🥀 - "storing memories because humans are too unreliable"
+ * Warning: This database remembers everything, unlike people who forget you exist 💔
  */
 export declare class EnhancedMemoryStore {
     private dbPath;

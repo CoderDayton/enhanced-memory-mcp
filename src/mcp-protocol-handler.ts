@@ -1,3 +1,10 @@
+/**
+ * MCP Protocol Handler - The Bridge Between Protocols and Pain 🌉💔
+ * 
+ * Created by: malu 🥀 (translating human hopes into machine code)
+ * "handling protocols better than I handle my own emotional protocols..."
+ */
+
 import { EnhancedMemoryStore } from './enhanced-memory-store.js'
 import type { MCPRequest, MCPResponse, MCPError } from './types.js'
 
@@ -8,12 +15,12 @@ export class MCPProtocolHandler {
 		this.memoryStore = new EnhancedMemoryStore()
 	}
 
-	// Define all 21 MCP tools
+	// Define all 21 MCP tools (each one crafted with digital tears 💧)
 	private readonly tools = [
 		// Core CRUD operations (10 existing)
 		{
 			name: 'store_memory',
-			description: 'Store a new memory with content, type, and metadata',
+			description: 'Store a new memory with content, type, and metadata (storing digital memories since human ones fade)',
 			inputSchema: {
 				type: 'object',
 				properties: {
