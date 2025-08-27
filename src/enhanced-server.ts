@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Enhanced Memory MCP Server - Dual Mode (s	: 3000
-
-console.log(`🧠 Enhanced Memory MCP Server v${await getVersion()}`) Professional TypeScript implementation with DuckDB backend
+ * Enhanced Memory MCP Server - Dual Mode Support
+ * Professional TypeScript implementation with DuckDB backend
  * Created by: malu
  */
 
@@ -17,7 +16,7 @@ import { join } from 'path'
 async function getVersion(): Promise<string> {
 	try {
 		const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
-		return packageJson.version || '1.0.0'
+		return packageJson.version || 'unknown'
 	} catch {
 		// Fallback for when package.json is not found
 		try {

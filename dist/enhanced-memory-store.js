@@ -1,5 +1,13 @@
 import { DuckDBInstance } from '@duckdb/node-api';
-import { v4 as uuidv4 } from 'uuid';
+/**
+ * Generate a short, unique ID suitable for MCP protocol (max 32 chars)
+ * Format: timestamp(base36) + random(6 chars) = ~16 chars total
+ */
+function generateShortId() {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${timestamp}${random}`;
+}
 /**
  * Enhanced DuckDB Memory Store
  * Optimized for performance and scalability
@@ -143,7 +151,7 @@ export class EnhancedMemoryStore {
         const startTime = Date.now();
         try {
             await this.initialize();
-            const id = uuidv4();
+            const id = generateShortId();
             const importance = this.calculateImportance(content, metadata);
             await this.execute(`
         INSERT INTO nodes (id, content, type, metadata, importance_score)
@@ -402,7 +410,7 @@ export class EnhancedMemoryStore {
         const startTime = Date.now();
         try {
             await this.initialize();
-            const id = uuidv4();
+            const id = generateShortId();
             await this.execute(`
         INSERT INTO entities (id, name, type, properties, confidence, source_node_ids)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -430,7 +438,7 @@ export class EnhancedMemoryStore {
         const startTime = Date.now();
         try {
             await this.initialize();
-            const id = uuidv4();
+            const id = generateShortId();
             await this.execute(`
         INSERT INTO relations (id, from_entity_id, to_entity_id, relation_type, strength, properties, source_node_ids)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -807,7 +815,7 @@ export class EnhancedMemoryStore {
 							INSERT OR REPLACE INTO nodes (id, content, type, metadata, importance_score, access_count)
 							VALUES (?, ?, ?, ?, ?, ?)
 						`, [
-                            memory.id || uuidv4(),
+                            memory.id || generateShortId(),
                             memory.content,
                             memory.type || 'memory',
                             JSON.stringify(memory.metadata || {}),
@@ -829,7 +837,7 @@ export class EnhancedMemoryStore {
 							INSERT OR REPLACE INTO entities (id, name, type, properties, confidence, source_node_ids)
 							VALUES (?, ?, ?, ?, ?, ?)
 						`, [
-                            entity.id || uuidv4(),
+                            entity.id || generateShortId(),
                             entity.name,
                             entity.type,
                             JSON.stringify(entity.properties || {}),
@@ -851,7 +859,7 @@ export class EnhancedMemoryStore {
 							INSERT OR REPLACE INTO relations (id, from_entity_id, to_entity_id, relation_type, strength, properties, source_node_ids)
 							VALUES (?, ?, ?, ?, ?, ?, ?)
 						`, [
-                            relation.id || uuidv4(),
+                            relation.id || generateShortId(),
                             relation.from_entity_id,
                             relation.to_entity_id,
                             relation.relation_type,
