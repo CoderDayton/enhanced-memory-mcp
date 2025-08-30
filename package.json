@@ -1,6 +1,6 @@
 {
     "name": "enhanced-memory-mcp",
-    "version": "1.4.7",
+    "version": "1.4.8",
     "description": "Enhanced MCP memory server with 20 consolidated tools, advanced search algorithms, and graph relationships - built by malu",
     "author": "malu",
     "license": "MIT",
@@ -41,7 +41,7 @@
         "start": "node dist/mcp-server.js",
         "start:stdio": "node dist/mcp-server.js",
         "dev": "tsc && node dist/mcp-server.js",
-        "test": "node tests/comprehensive-mcp-test.js",
+        "test": "node tests/basic-mcp-test.js",
         "test:comprehensive": "./test.sh",
         "clean": "rm -rf dist",
         "lint": "tsc --noEmit",

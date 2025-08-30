@@ -10,15 +10,45 @@ import { EnhancedMemoryStore } from './enhanced-memory-store.js';
 const memoryStore = new EnhancedMemoryStore();
 const server = new McpServer({
     name: 'enhanced-memory-mcp',
-    version: '1.4.7',
+    version: '1.4.8',
 });
 // BigInt serialization utility with improved error handling
 function serializeBigInt(obj) {
     try {
         return JSON.parse(JSON.stringify(obj, (key, value) => {
+            // Handle different data types
+            if (value === null || value === undefined) {
+                return value;
+            }
+            // Convert bigint to number if safe, otherwise to string
             if (typeof value === 'bigint') {
-                // Convert bigint to number if safe, otherwise to string
                 return value <= Number.MAX_SAFE_INTEGER ? Number(value) : value.toString();
+            }
+            // Handle functions by converting to string representation
+            if (typeof value === 'function') {
+                return `[Function: ${value.name || 'anonymous'}]`;
+            }
+            // Handle objects with special toJSON methods
+            if (typeof value === 'object' && value !== null && typeof value.toJSON === 'function') {
+                try {
+                    return value.toJSON();
+                }
+                catch (e) {
+                    return `[Object with toJSON error: ${e instanceof Error ? e.message : 'unknown error'}]`;
+                }
+            }
+            // Handle other object types
+            if (typeof value === 'object' && value !== null) {
+                // Handle Dates
+                if (value instanceof Date) {
+                    return value.toISOString();
+                }
+                // Handle Arrays
+                if (Array.isArray(value)) {
+                    return value;
+                }
+                // Handle plain objects
+                return value;
             }
             return value;
         }));
@@ -43,7 +73,7 @@ server.registerTool('memory', {
         id: z.string().optional(),
         content: z.string().optional(),
         type: z.string().optional(),
-        metadata: z.record(z.any()).optional(),
+        metadata: z.record(z.unknown()).optional(),
         filters: z
             .object({
             type: z.string().optional(),
@@ -158,7 +188,7 @@ server.registerTool('entity', {
         id: z.string().optional(),
         name: z.string().optional(),
         type: z.string().optional(),
-        properties: z.record(z.any()).optional(),
+        properties: z.record(z.unknown()).optional(),
         confidence: z.number().default(1.0).optional(),
         filters: z
             .object({
@@ -210,7 +240,7 @@ server.registerTool('relation', {
         toEntityId: z.string().optional(),
         relationType: z.string().optional(),
         strength: z.number().default(1.0).optional(),
-        properties: z.record(z.any()).optional(),
+        properties: z.record(z.unknown()).optional(),
         filters: z
             .object({
             type: z.string().optional(),
@@ -397,7 +427,7 @@ server.registerTool('observation', {
         type: z.string().default('observation').optional(),
         sourceMemoryIds: z.array(z.string()).optional(),
         confidence: z.number().default(1.0).optional(),
-        metadata: z.record(z.any()).optional(),
+        metadata: z.record(z.unknown()).optional(),
         filters: z
             .object({
             type: z.string().optional(),
@@ -660,7 +690,7 @@ server.registerTool('batch', {
         operation: z.enum(['delete_by_type', 'delete_by_tags', 'update_by_type']),
         type: z.string().optional(),
         tags: z.array(z.string()).optional(),
-        updates: z.record(z.any()).optional(),
+        updates: z.record(z.unknown()).optional(),
         confirm: z.boolean().default(false),
     },
 }, async ({ operation, type, tags, updates, confirm }) => {
