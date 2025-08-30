@@ -3,11 +3,6 @@
  * Enhanced Memory MCP Server - Consolidated Tool Implementation
  * 20 optimized tools (reduced from 42) with unified interfaces
  */
-// Add BigInt serialization support
-;
-BigInt.prototype.toJSON = function () {
-    return Number(this);
-};
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -15,8 +10,30 @@ import { EnhancedMemoryStore } from './enhanced-memory-store.js';
 const memoryStore = new EnhancedMemoryStore();
 const server = new McpServer({
     name: 'enhanced-memory-mcp',
-    version: '1.4.6',
+    version: '1.4.7',
 });
+// BigInt serialization utility with improved error handling
+function serializeBigInt(obj) {
+    try {
+        return JSON.parse(JSON.stringify(obj, (key, value) => {
+            if (typeof value === 'bigint') {
+                // Convert bigint to number if safe, otherwise to string
+                return value <= Number.MAX_SAFE_INTEGER ? Number(value) : value.toString();
+            }
+            return value;
+        }));
+    }
+    catch (error) {
+        console.warn('Serialization warning:', error);
+        // Fallback to string representation
+        try {
+            return obj?.toString() || String(obj);
+        }
+        catch {
+            return '[Unserializable Object]';
+        }
+    }
+}
 // === CORE MEMORY OPERATIONS ===
 server.registerTool('memory', {
     title: 'Memory Operations',
@@ -79,7 +96,7 @@ server.registerTool('memory', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('search', {
@@ -130,7 +147,7 @@ server.registerTool('search', {
         });
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('entity', {
@@ -180,7 +197,7 @@ server.registerTool('entity', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('relation', {
@@ -226,7 +243,7 @@ server.registerTool('relation', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('tag', {
@@ -265,7 +282,7 @@ server.registerTool('tag', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 // === ADVANCED ANALYSIS OPERATIONS ===
@@ -305,7 +322,7 @@ server.registerTool('analyze', {
         }
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('observation', {
@@ -344,7 +361,7 @@ server.registerTool('observation', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('graph', {
@@ -366,7 +383,7 @@ server.registerTool('graph', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 // === DATA MANAGEMENT OPERATIONS ===
@@ -391,7 +408,7 @@ server.registerTool('bulk', {
         }
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('maintenance', {
@@ -420,11 +437,11 @@ server.registerTool('maintenance', {
             result = await memoryStore.rebuildSearchIndexes();
             break;
         case 'clear_cache':
-            result = await memoryStore.clearCache();
+            result = memoryStore.clearCache();
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('transfer', {
@@ -450,7 +467,7 @@ server.registerTool('transfer', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('analytics', {
@@ -470,7 +487,7 @@ server.registerTool('analytics', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 // === SIMILARITY AND CONSOLIDATION OPERATIONS ===
@@ -497,7 +514,7 @@ server.registerTool('similarity', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('temporal', {
@@ -523,7 +540,7 @@ server.registerTool('temporal', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('cache', {
@@ -536,18 +553,17 @@ server.registerTool('cache', {
     let result;
     switch (operation) {
         case 'clear':
-            result = await memoryStore.clearCache();
+            result = memoryStore.clearCache();
             break;
         case 'stats':
-            result = await memoryStore.getCacheStats();
+            result = memoryStore.getCacheStats();
             break;
         case 'optimize':
-            // Use available method instead
-            result = { message: 'Cache optimization completed', status: 'success' };
+            result = await memoryStore.optimizeCache();
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('stats', {
@@ -572,7 +588,7 @@ server.registerTool('stats', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('batch', {
@@ -612,7 +628,7 @@ server.registerTool('batch', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('backup', {
@@ -639,14 +655,18 @@ server.registerTool('backup', {
         case 'restore':
             if (!backupId)
                 throw new Error('BackupId required for restore operation');
-            result = { message: 'Restore functionality available via import_data', backupId };
+            // For now, expect backup data to be passed as description field
+            // In production, this would load from backup storage
+            if (!description)
+                throw new Error('Backup data required in description field');
+            result = await memoryStore.restoreFromBackup(description);
             break;
         case 'list':
-            result = { message: 'Backup list functionality not implemented', backups: [] };
+            result = await memoryStore.listBackups();
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('index', {
@@ -664,7 +684,7 @@ server.registerTool('index', {
             result = { message: 'Search indexes rebuilt', force, status: 'success' };
             break;
         case 'optimize':
-            result = { message: 'Search indexes optimized', status: 'success' };
+            result = await memoryStore.optimizeSearchIndexes();
             break;
         case 'stats':
             const stats = await memoryStore.getMemoryStats();
@@ -672,7 +692,7 @@ server.registerTool('index', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 server.registerTool('workflow', {
@@ -722,17 +742,13 @@ server.registerTool('workflow', {
             break;
     }
     return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: serializeBigInt(result) }],
     };
 });
 // Start the server
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.log('🧠 Enhanced Memory MCP Server v1.4.6');
-    console.log('📊 Tools: 20 optimized tools with unified interfaces');
-    console.log('🔍 Features: Advanced search, entity extraction, graph relationships');
-    console.log('🚀 Mode: STDIO (MCP SDK)');
 }
 main().catch((error) => {
     console.error('❌ Fatal error:', error);

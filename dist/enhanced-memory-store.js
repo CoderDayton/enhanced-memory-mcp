@@ -8,14 +8,35 @@ config();
 const CONFIG = {
     DATABASE_PATH: process.env.DATABASE_PATH || 'data/memory.duckdb',
     BACKUP_PATH: process.env.BACKUP_PATH || 'backups/',
-    CACHE_SIZE: parseInt(process.env.CACHE_SIZE || '1000'),
-    CACHE_EXPIRY_MS: parseInt(process.env.CACHE_EXPIRY_MS || '300000'),
-    MAX_SEARCH_RESULTS: parseInt(process.env.MAX_SEARCH_RESULTS || '100'),
-    DEFAULT_SIMILARITY_LIMIT: parseInt(process.env.DEFAULT_SIMILARITY_LIMIT || '5'),
-    SIMILARITY_THRESHOLD: parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7'),
-    DEFAULT_SEARCH_LIMIT: parseInt(process.env.DEFAULT_SEARCH_LIMIT || '50'),
+    CACHE_SIZE: (() => {
+        const size = parseInt(process.env.CACHE_SIZE || '1000');
+        return isNaN(size) ? 1000 : size;
+    })(),
+    CACHE_EXPIRY_MS: (() => {
+        const expiry = parseInt(process.env.CACHE_EXPIRY_MS || '300000');
+        return isNaN(expiry) ? 300000 : expiry;
+    })(),
+    MAX_SEARCH_RESULTS: (() => {
+        const maxResults = parseInt(process.env.MAX_SEARCH_RESULTS || '100');
+        return isNaN(maxResults) ? 100 : maxResults;
+    })(),
+    DEFAULT_SIMILARITY_LIMIT: (() => {
+        const limit = parseInt(process.env.DEFAULT_SIMILARITY_LIMIT || '5');
+        return isNaN(limit) ? 5 : limit;
+    })(),
+    SIMILARITY_THRESHOLD: (() => {
+        const threshold = parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7');
+        return isNaN(threshold) ? 0.7 : threshold;
+    })(),
+    DEFAULT_SEARCH_LIMIT: (() => {
+        const limit = parseInt(process.env.DEFAULT_SEARCH_LIMIT || '50');
+        return isNaN(limit) ? 50 : limit;
+    })(),
     ENABLE_PERFORMANCE_MONITORING: process.env.ENABLE_PERFORMANCE_MONITORING === 'true',
-    ANALYTICS_RETENTION_DAYS: parseInt(process.env.ANALYTICS_RETENTION_DAYS || '30'),
+    ANALYTICS_RETENTION_DAYS: (() => {
+        const days = parseInt(process.env.ANALYTICS_RETENTION_DAYS || '30');
+        return isNaN(days) ? 30 : days;
+    })(),
     LOG_LEVEL: process.env.LOG_LEVEL || 'info',
     NODE_ENV: process.env.NODE_ENV || 'production',
 };
@@ -83,7 +104,9 @@ class TrieSearchEngine {
 class FuzzySearchEngine {
     // Calculate Levenshtein distance between two strings
     editDistance(a, b) {
-        const matrix = Array(a.length + 1).fill(null).map(() => Array(b.length + 1).fill(0));
+        const matrix = Array(a.length + 1)
+            .fill(null)
+            .map(() => Array(b.length + 1).fill(0));
         for (let i = 0; i <= a.length; i++)
             matrix[i][0] = i;
         for (let j = 0; j <= b.length; j++)
@@ -133,7 +156,7 @@ class FuzzySearchEngine {
         }
         const trigramsA = new Set(this.generateTrigrams(a));
         const trigramsB = new Set(this.generateTrigrams(b));
-        const intersection = new Set([...trigramsA].filter(x => trigramsB.has(x)));
+        const intersection = new Set([...trigramsA].filter((x) => trigramsB.has(x)));
         const union = new Set([...trigramsA, ...trigramsB]);
         return union.size > 0 ? intersection.size / union.size : 0;
     }
@@ -180,10 +203,11 @@ class VectorSearchEngine {
     tokenize(text) {
         if (!text || typeof text !== 'string')
             return [];
-        return text.toLowerCase()
+        return text
+            .toLowerCase()
             .replace(/[^\w\s]/g, ' ')
             .split(/\s+/)
-            .filter(word => word.length > 2);
+            .filter((word) => word.length > 2);
     }
 }
 // Hybrid search engine combining all strategies
@@ -209,7 +233,7 @@ class HybridSearchEngine {
             .map(([memoryId, { score, sources }]) => ({
             memoryId,
             finalScore: score,
-            sources
+            sources,
         }))
             .sort((a, b) => b.finalScore - a.finalScore);
     }
@@ -229,8 +253,9 @@ export class EnhancedMemoryStore {
     isInitialized = false;
     // Performance caching layer
     queryCache = new Map();
+    cacheAccessTimes = new Map(); // Track access times for LRU
     maxCacheSize = Number(CONFIG.CACHE_SIZE) || 1000;
-    cacheExpiry = Number(CONFIG.CACHE_EXPIRY_MS) || (5 * 60 * 1000); // 5 minutes default
+    cacheExpiry = Number(CONFIG.CACHE_EXPIRY_MS) || 5 * 60 * 1000; // 5 minutes default
     // Performance tracking
     metrics = {
         operationCounts: {
@@ -250,7 +275,7 @@ export class EnhancedMemoryStore {
         trie: new TrieSearchEngine(),
         fuzzy: new FuzzySearchEngine(),
         vector: new VectorSearchEngine(),
-        hybrid: new HybridSearchEngine()
+        hybrid: new HybridSearchEngine(),
     };
     constructor(dbPath = CONFIG.DATABASE_PATH) {
         this.dbPath = dbPath;
@@ -278,6 +303,15 @@ export class EnhancedMemoryStore {
             await this.setupDatabase();
             this.isInitialized = true;
             console.log('✅💀 Pure DuckDB Memory Store initialized successfully! (another creation that outlasts friendships)');
+            // Set up periodic cache cleanup
+            setInterval(() => {
+                try {
+                    this.cleanupExpiredCache();
+                }
+                catch (error) {
+                    console.error('❌ Cache cleanup error:', error);
+                }
+            }, 60000); // Clean every minute
         }
         catch (error) {
             console.error('❌🥀 Failed to initialize DuckDB:', error);
@@ -467,7 +501,7 @@ export class EnhancedMemoryStore {
             `CREATE INDEX IF NOT EXISTS idx_vectors_norm ON search_vectors(tf_idf_norm DESC)`,
             `CREATE INDEX IF NOT EXISTS idx_cache_hash ON search_cache(query_hash)`,
             `CREATE INDEX IF NOT EXISTS idx_cache_type ON search_cache(search_type)`,
-            `CREATE INDEX IF NOT EXISTS idx_cache_access ON search_cache(access_count DESC, last_accessed DESC)`
+            `CREATE INDEX IF NOT EXISTS idx_cache_access ON search_cache(access_count DESC, last_accessed DESC)`,
         ];
         for (const query of indexQueries) {
             try {
@@ -517,7 +551,14 @@ export class EnhancedMemoryStore {
         return this.addEntity(entity);
     }
     async storeRelation(fromEntityId, toEntityId, relationType, strength = 1.0, properties = {}) {
-        const relation = { from_entity_id: fromEntityId, to_entity_id: toEntityId, relation_type: relationType, strength, properties, source_node_ids: [] };
+        const relation = {
+            from_entity_id: fromEntityId,
+            to_entity_id: toEntityId,
+            relation_type: relationType,
+            strength,
+            properties,
+            source_node_ids: [],
+        };
         return this.addRelation(relation);
     }
     async analyzeMemory(content, extractEntities = true, extractRelations = true) {
@@ -528,21 +569,21 @@ export class EnhancedMemoryStore {
             content,
             entities,
             relations,
-            analysis_time: Date.now()
+            analysis_time: Date.now(),
         };
     }
     async getSimilarMemories(content, limit = CONFIG.DEFAULT_SIMILARITY_LIMIT, threshold = CONFIG.SIMILARITY_THRESHOLD) {
         // Use semantic search for better similarity matching
         const searchResult = await this.searchMemories(content, {
             searchType: 'semantic',
-            limit: limit * 3
+            limit: limit * 3,
         });
         return searchResult.nodes
-            .map(memory => ({
+            .map((memory) => ({
             ...memory,
-            similarity: this.calculateSimilarity(content, memory.content)
+            similarity: this.calculateSimilarity(content, memory.content),
         }))
-            .filter(memory => memory.similarity >= threshold)
+            .filter((memory) => memory.similarity >= threshold)
             .sort((a, b) => b.similarity - a.similarity)
             .slice(0, limit)
             .map(({ similarity, ...memory }) => memory);
@@ -563,7 +604,7 @@ export class EnhancedMemoryStore {
 				ORDER BY frequency DESC, word ASC
 				LIMIT ?
 			`, [`${query.toLowerCase()}%`, limit]);
-            return words.map(row => row.word);
+            return words.map((row) => row.word);
         }
         catch (error) {
             console.warn('⚠️ Autocomplete error:', error);
@@ -583,14 +624,20 @@ export class EnhancedMemoryStore {
             const fieldWeights = {
                 content: 1.0,
                 metadata: 0.7,
-                tags: 0.8
+                tags: 0.8,
             };
             for (const field of fields) {
                 const weight = fieldWeights[field] || 0.5;
                 let results = [];
                 if (field === 'content') {
-                    const searchResult = await this.searchMemories(query, { searchType: 'hybrid', limit: limit * 2 });
-                    results = searchResult.nodes.map(node => ({ memory_id: node.id, score: node.importance_score || 0.5 }));
+                    const searchResult = await this.searchMemories(query, {
+                        searchType: 'hybrid',
+                        limit: limit * 2,
+                    });
+                    results = searchResult.nodes.map((node) => ({
+                        memory_id: node.id,
+                        score: node.importance_score || 0.5,
+                    }));
                 }
                 else if (field === 'metadata') {
                     results = await this.execute(`
@@ -602,7 +649,10 @@ export class EnhancedMemoryStore {
                 }
                 else if (field === 'tags') {
                     const tagResults = await this.findByTags([query]);
-                    results = tagResults.map(item => ({ memory_id: item.memory.id, score: item.memory.importanceScore || 0.5 }));
+                    results = tagResults.map((item) => ({
+                        memory_id: item.memory.id,
+                        score: item.memory.importanceScore || 0.5,
+                    }));
                 }
                 // Add weighted scores
                 for (const result of results) {
@@ -641,15 +691,19 @@ export class EnhancedMemoryStore {
                 type: row.type,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
-                metadata: JSON.parse(row.metadata || '{}'),
-                importance_score: typeof row.importance_score === 'bigint' ? Number(row.importance_score) : (row.importance_score || 0.5),
-                access_count: typeof row.access_count === 'bigint' ? Number(row.access_count) : (row.access_count || 0),
-                last_accessed: row.last_accessed
+                metadata: this.safeJsonParse(row.metadata || '{}', {}),
+                importance_score: typeof row.importance_score === 'bigint'
+                    ? Number(row.importance_score)
+                    : row.importance_score || 0.5,
+                access_count: typeof row.access_count === 'bigint'
+                    ? Number(row.access_count)
+                    : row.access_count || 0,
+                last_accessed: row.last_accessed,
             }));
             return {
                 nodes,
                 total_count: nodes.length,
-                query_time_ms: Date.now() - startTime
+                query_time_ms: Date.now() - startTime,
             };
         }
         catch (error) {
@@ -682,8 +736,8 @@ export class EnhancedMemoryStore {
 			`, [`%${query}%`, limit]);
             // Combine and deduplicate
             const suggestions = new Set();
-            popularTerms.forEach(row => suggestions.add(row.query_text));
-            frequentWords.forEach(row => suggestions.add(row.word));
+            popularTerms.forEach((row) => suggestions.add(row.query_text));
+            frequentWords.forEach((row) => suggestions.add(row.word));
             return Array.from(suggestions).slice(0, limit);
         }
         catch (error) {
@@ -703,12 +757,12 @@ export class EnhancedMemoryStore {
             const relationRows = await relationResult.getRows();
             const performance = this.getPerformanceMetrics();
             const stats = {
-                memories: Number(memoryRows[0]?.[0] || 0),
-                entities: Number(entityRows[0]?.[0] || 0),
-                relations: Number(relationRows[0]?.[0] || 0),
+                memories: Number(this.safeGetRowValue(memoryRows, 0, 0, 0)),
+                entities: Number(this.safeGetRowValue(entityRows, 0, 0, 0)),
+                relations: Number(this.safeGetRowValue(relationRows, 0, 0, 0)),
                 performance,
                 cache_size: this.queryCache.size,
-                uptime_seconds: Math.floor(Date.now() / 1000)
+                uptime_seconds: Math.floor(Date.now() / 1000),
             };
             return stats;
         }
@@ -722,7 +776,7 @@ export class EnhancedMemoryStore {
                 performance: this.getPerformanceMetrics(),
                 cache_size: this.queryCache.size,
                 uptime_seconds: Math.floor(Date.now() / 1000),
-                error: String(error)
+                error: String(error),
             };
         }
     }
@@ -744,10 +798,10 @@ export class EnhancedMemoryStore {
                 type: row[2],
                 created_at: row[3],
                 updated_at: row[4],
-                metadata: JSON.parse(row[5] || '{}'),
+                metadata: this.safeJsonParse(row[5] || '{}', {}),
                 importance_score: row[6] || 0.5,
                 access_count: row[7] || 0,
-                last_accessed: row[8]
+                last_accessed: row[8],
             }));
         }
         catch (error) {
@@ -762,7 +816,7 @@ export class EnhancedMemoryStore {
         const patterns = {
             person: /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, // First Last name pattern
             location: /\b(?:in|at|from|to) ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g,
-            organization: /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*) (?:Inc|Corp|Ltd|Company|Organization)\b/g
+            organization: /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*) (?:Inc|Corp|Ltd|Company|Organization)\b/g,
         };
         for (const [type, pattern] of Object.entries(patterns)) {
             const matches = content.match(pattern);
@@ -771,7 +825,7 @@ export class EnhancedMemoryStore {
                     entities.push({
                         name: match.trim(),
                         type,
-                        confidence: 0.6 // Low confidence for simple pattern matching
+                        confidence: 0.6, // Low confidence for simple pattern matching
                     });
                 }
             }
@@ -785,7 +839,7 @@ export class EnhancedMemoryStore {
             relations.push({
                 type: 'employment',
                 entities: [],
-                confidence: 0.5
+                confidence: 0.5,
             });
         }
         return relations;
@@ -814,10 +868,10 @@ export class EnhancedMemoryStore {
                 type: row[2],
                 created_at: row[3],
                 updated_at: row[4],
-                metadata: JSON.parse(row[5] || '{}'),
+                metadata: this.safeJsonParse(row[5] || '{}', {}),
                 importance_score: row[6] || 0.5,
                 access_count: row[7] || 0,
-                last_accessed: row[8]
+                last_accessed: row[8],
             };
             // Cache the result
             this.setCache(cacheKey, memory);
@@ -863,8 +917,9 @@ export class EnhancedMemoryStore {
     async buildWordIndex(memoryId, words, fieldType) {
         const wordFreqs = new Map();
         // Count word frequencies
-        words.forEach(word => {
-            if (word.length > 2) { // Skip very short words
+        words.forEach((word) => {
+            if (word.length > 2) {
+                // Skip very short words
                 wordFreqs.set(word, (wordFreqs.get(word) || 0) + 1);
             }
         });
@@ -935,7 +990,7 @@ export class EnhancedMemoryStore {
             JSON.stringify(Object.fromEntries(tfidfVector)),
             words.length,
             uniqueWords.length,
-            norm
+            norm,
         ]);
     }
     /**
@@ -993,7 +1048,7 @@ export class EnhancedMemoryStore {
             return Number(obj);
         }
         if (Array.isArray(obj)) {
-            return obj.map(item => this.convertBigIntValues(item));
+            return obj.map((item) => this.convertBigIntValues(item));
         }
         if (obj && typeof obj === 'object') {
             const converted = {};
@@ -1003,6 +1058,35 @@ export class EnhancedMemoryStore {
             return converted;
         }
         return obj;
+    }
+    /**
+     * Safely extract a value from database result rows
+     */
+    safeGetRowValue(rows, rowIndex = 0, colIndex = 0, defaultValue = 0) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return defaultValue;
+        }
+        const row = rows[rowIndex];
+        if (!row || !Array.isArray(row) || row.length <= colIndex) {
+            return defaultValue;
+        }
+        const value = row[colIndex];
+        return value !== null && value !== undefined ? value : defaultValue;
+    }
+    /**
+     * Safely parse JSON with error handling
+     */
+    safeJsonParse(jsonString, defaultValue = {}) {
+        if (!jsonString || typeof jsonString !== 'string') {
+            return defaultValue;
+        }
+        try {
+            return JSON.parse(jsonString);
+        }
+        catch (error) {
+            console.warn('Failed to parse JSON:', jsonString.substring(0, 100) + '...');
+            return defaultValue;
+        }
     }
     async searchMemories(query, options = {}) {
         const startTime = Date.now();
@@ -1071,7 +1155,9 @@ export class EnhancedMemoryStore {
 			`, [word, minImportance]);
             for (const row of results) {
                 const memoryId = row.memory_id;
-                const score = (row.frequency || 1) * (row.importance_score || 0.5) * (1 + Math.log(row.access_count + 1));
+                const score = (row.frequency || 1) *
+                    (row.importance_score || 0.5) *
+                    (1 + Math.log(row.access_count + 1));
                 memoryScores.set(memoryId, (memoryScores.get(memoryId) || 0) + score);
             }
         }
@@ -1098,7 +1184,8 @@ export class EnhancedMemoryStore {
                 const rows = await result.getRows();
                 for (const row of rows) {
                     const similarity = this.searchEngines.fuzzy.trigramSimilarity(word, String(row[1]));
-                    if (similarity > 0.3) { // Minimum similarity threshold
+                    if (similarity > 0.3) {
+                        // Minimum similarity threshold
                         const score = similarity * (Number(row[2]) || 1) * (Number(row[3]) || 0.5);
                         const memoryId = String(row[0]);
                         memoryScores.set(memoryId, (memoryScores.get(memoryId) || 0) + score);
@@ -1124,19 +1211,20 @@ export class EnhancedMemoryStore {
         const rows = await result.getRows();
         // Calculate query TF-IDF vector
         const queryTermFreq = new Map();
-        queryWords.forEach(word => {
+        queryWords.forEach((word) => {
             queryTermFreq.set(word, (queryTermFreq.get(word) || 0) + 1 / queryWords.length);
         });
         for (const row of rows) {
             try {
-                const vectorData = JSON.parse(String(row[1]));
+                const vectorData = this.safeJsonParse(String(row[1]), {});
                 const memoryVector = new Map();
                 // Ensure all values are numbers
                 for (const [key, value] of Object.entries(vectorData)) {
                     memoryVector.set(key, typeof value === 'number' ? value : Number(value));
                 }
                 const similarity = this.searchEngines.vector.cosineSimilarity(queryTermFreq, memoryVector);
-                if (similarity > 0.1) { // Minimum similarity threshold
+                if (similarity > 0.1) {
+                    // Minimum similarity threshold
                     const score = similarity * (Number(row[3]) || 0.5) * (1 + Math.log(Number(row[4]) + 1));
                     memoryScores.set(String(row[0]), score);
                 }
@@ -1153,19 +1241,40 @@ export class EnhancedMemoryStore {
     async hybridSearch(query, limit, minImportance) {
         // Run multiple search strategies in parallel
         const [exactResults, fuzzyResults, semanticResults] = await Promise.all([
-            this.exactSearch(query, limit * 2, minImportance).catch(() => ({ nodes: [], total_count: 0, query_time_ms: 0 })),
-            this.fuzzySearch(query, limit * 2, minImportance).catch(() => ({ nodes: [], total_count: 0, query_time_ms: 0 })),
-            this.semanticSearch(query, limit * 2, minImportance).catch(() => ({ nodes: [], total_count: 0, query_time_ms: 0 }))
+            this.exactSearch(query, limit * 2, minImportance).catch(() => ({
+                nodes: [],
+                total_count: 0,
+                query_time_ms: 0,
+            })),
+            this.fuzzySearch(query, limit * 2, minImportance).catch(() => ({
+                nodes: [],
+                total_count: 0,
+                query_time_ms: 0,
+            })),
+            this.semanticSearch(query, limit * 2, minImportance).catch(() => ({
+                nodes: [],
+                total_count: 0,
+                query_time_ms: 0,
+            })),
         ]);
         // Convert results to score format for combination
-        const exactScores = exactResults.nodes.map(node => ({ memoryId: node.id, score: node.importance_score || 0.5 }));
-        const fuzzyScores = fuzzyResults.nodes.map(node => ({ memoryId: node.id, score: node.importance_score || 0.5 }));
-        const semanticScores = semanticResults.nodes.map(node => ({ memoryId: node.id, score: node.importance_score || 0.5 }));
+        const exactScores = exactResults.nodes.map((node) => ({
+            memoryId: node.id,
+            score: node.importance_score || 0.5,
+        }));
+        const fuzzyScores = fuzzyResults.nodes.map((node) => ({
+            memoryId: node.id,
+            score: node.importance_score || 0.5,
+        }));
+        const semanticScores = semanticResults.nodes.map((node) => ({
+            memoryId: node.id,
+            score: node.importance_score || 0.5,
+        }));
         // Combine results using hybrid engine
         const combinedResults = this.searchEngines.hybrid.combineResults(exactScores, fuzzyScores, semanticScores);
         // Get top results
         const topResults = combinedResults.slice(0, limit);
-        const memoryIds = topResults.map(r => r.memoryId);
+        const memoryIds = topResults.map((r) => r.memoryId);
         if (memoryIds.length === 0) {
             return { nodes: [], total_count: 0, query_time_ms: 0 };
         }
@@ -1183,14 +1292,18 @@ export class EnhancedMemoryStore {
             created_at: row.created_at,
             updated_at: row.updated_at,
             metadata: JSON.parse(row.metadata || '{}'),
-            importance_score: typeof row.importance_score === 'bigint' ? Number(row.importance_score) : (row.importance_score || 0.5),
-            access_count: typeof row.access_count === 'bigint' ? Number(row.access_count) : (row.access_count || 0),
-            last_accessed: row.last_accessed
+            importance_score: typeof row.importance_score === 'bigint'
+                ? Number(row.importance_score)
+                : row.importance_score || 0.5,
+            access_count: typeof row.access_count === 'bigint'
+                ? Number(row.access_count)
+                : row.access_count || 0,
+            last_accessed: row.last_accessed,
         }));
         return {
             nodes,
             total_count: combinedResults.length,
-            query_time_ms: 0 // Will be set by caller
+            query_time_ms: 0, // Will be set by caller
         };
     }
     /**
@@ -1203,7 +1316,9 @@ export class EnhancedMemoryStore {
         if (sortedResults.length === 0) {
             return { nodes: [], total_count: 0, query_time_ms: 0 };
         }
-        const memoryIds = sortedResults.map(([id]) => String(id)).filter(id => id && id.length > 0);
+        const memoryIds = sortedResults
+            .map(([id]) => String(id))
+            .filter((id) => id && id.length > 0);
         if (memoryIds.length === 0) {
             return { nodes: [], total_count: 0, query_time_ms: 0 };
         }
@@ -1230,15 +1345,15 @@ export class EnhancedMemoryStore {
                     created_at: String(row[3]),
                     updated_at: String(row[4]),
                     metadata,
-                    importance_score: typeof row[6] === 'bigint' ? Number(row[6]) : (Number(row[6]) || 0.5),
-                    access_count: typeof row[7] === 'bigint' ? Number(row[7]) : (Number(row[7]) || 0),
-                    last_accessed: row[8] ? String(row[8]) : undefined
+                    importance_score: typeof row[6] === 'bigint' ? Number(row[6]) : Number(row[6]) || 0.5,
+                    access_count: typeof row[7] === 'bigint' ? Number(row[7]) : Number(row[7]) || 0,
+                    last_accessed: row[8] ? String(row[8]) : undefined,
                 };
             });
             return {
                 nodes,
                 total_count: memoryScores.size,
-                query_time_ms: 0
+                query_time_ms: 0,
             };
         }
         // For multiple IDs, use IN clause
@@ -1265,15 +1380,15 @@ export class EnhancedMemoryStore {
                 created_at: String(row[3]),
                 updated_at: String(row[4]),
                 metadata,
-                importance_score: typeof row[6] === 'bigint' ? Number(row[6]) : (Number(row[6]) || 0.5),
-                access_count: typeof row[7] === 'bigint' ? Number(row[7]) : (Number(row[7]) || 0),
-                last_accessed: row[8] ? String(row[8]) : undefined
+                importance_score: typeof row[6] === 'bigint' ? Number(row[6]) : Number(row[6]) || 0.5,
+                access_count: typeof row[7] === 'bigint' ? Number(row[7]) : Number(row[7]) || 0,
+                last_accessed: row[8] ? String(row[8]) : undefined,
             };
         });
         return {
             nodes,
             total_count: memoryScores.size,
-            query_time_ms: 0 // Will be set by caller
+            query_time_ms: 0, // Will be set by caller
         };
     }
     /**
@@ -1305,15 +1420,15 @@ export class EnhancedMemoryStore {
                 created_at: String(row[3]),
                 updated_at: String(row[4]),
                 metadata,
-                importance_score: typeof row[6] === 'bigint' ? Number(row[6]) : (Number(row[6]) || 0.5),
-                access_count: typeof row[7] === 'bigint' ? Number(row[7]) : (Number(row[7]) || 0),
-                last_accessed: row[8] ? String(row[8]) : undefined
+                importance_score: typeof row[6] === 'bigint' ? Number(row[6]) : Number(row[6]) || 0.5,
+                access_count: typeof row[7] === 'bigint' ? Number(row[7]) : Number(row[7]) || 0,
+                last_accessed: row[8] ? String(row[8]) : undefined,
             };
         });
         return {
             nodes,
             total_count: nodes.length,
-            query_time_ms: 0
+            query_time_ms: 0,
         };
     }
     async addEntity(entity) {
@@ -1330,7 +1445,7 @@ export class EnhancedMemoryStore {
                 entity.type,
                 JSON.stringify(entity.properties || {}),
                 entity.confidence || 1.0,
-                JSON.stringify(entity.source_node_ids || [])
+                JSON.stringify(entity.source_node_ids || []),
             ]);
             this.invalidateCache(['entities', 'relations']);
             const latency = Date.now() - startTime;
@@ -1359,7 +1474,7 @@ export class EnhancedMemoryStore {
                 relation.relation_type,
                 relation.strength || 1.0,
                 JSON.stringify(relation.properties || {}),
-                JSON.stringify(relation.source_node_ids || [])
+                JSON.stringify(relation.source_node_ids || []),
             ]);
             this.invalidateCache(['relations', 'neighbors']);
             const latency = Date.now() - startTime;
@@ -1403,7 +1518,7 @@ export class EnhancedMemoryStore {
                 properties: JSON.parse(row[5] || '{}'),
                 created_at: row[6],
                 updated_at: row[7],
-                source_node_ids: JSON.parse(row[8] || '[]')
+                source_node_ids: JSON.parse(row[8] || '[]'),
             }));
             this.setCache(cacheKey, relations);
             const latency = Date.now() - startTime;
@@ -1500,7 +1615,7 @@ export class EnhancedMemoryStore {
                 metadata: JSON.parse(row[5] || '{}'),
                 importance_score: row[6] || 0.5,
                 access_count: row[7] || 0,
-                last_accessed: row[8]
+                last_accessed: row[8],
             }));
             this.setCache(cacheKey, memories);
             const latency = Date.now() - startTime;
@@ -1546,10 +1661,10 @@ export class EnhancedMemoryStore {
                 name: row[1],
                 type: row[2],
                 properties: JSON.parse(row[3] || '{}'),
-                confidence: typeof row[4] === 'bigint' ? Number(row[4]) : (row[4] || 1.0),
+                confidence: typeof row[4] === 'bigint' ? Number(row[4]) : row[4] || 1.0,
                 created_at: row[5],
                 updated_at: row[6],
-                source_node_ids: JSON.parse(row[7] || '[]')
+                source_node_ids: JSON.parse(row[7] || '[]'),
             }));
             this.setCache(cacheKey, entities);
             const latency = Date.now() - startTime;
@@ -1599,7 +1714,7 @@ export class EnhancedMemoryStore {
                 properties: JSON.parse(row[5] || '{}'),
                 created_at: row[6],
                 updated_at: row[7],
-                source_node_ids: JSON.parse(row[8] || '[]')
+                source_node_ids: JSON.parse(row[8] || '[]'),
             }));
             this.setCache(cacheKey, relations);
             const latency = Date.now() - startTime;
@@ -1659,7 +1774,7 @@ export class EnhancedMemoryStore {
             const [memories, entities, relations] = await Promise.all([
                 this.execute('SELECT * FROM nodes'),
                 this.execute('SELECT * FROM entities'),
-                this.execute('SELECT * FROM relations')
+                this.execute('SELECT * FROM relations'),
             ]);
             const data = {
                 memories: memories.map((row) => ({
@@ -1668,10 +1783,10 @@ export class EnhancedMemoryStore {
                     type: row[2],
                     created_at: row[3],
                     updated_at: row[4],
-                    metadata: JSON.parse(row[5] || '{}'),
+                    metadata: this.safeJsonParse(row[5] || '{}', {}),
                     importance_score: row[6],
                     access_count: row[7],
-                    last_accessed: row[8]
+                    last_accessed: row[8],
                 })),
                 entities: entities.map((row) => ({
                     id: row[0],
@@ -1681,7 +1796,7 @@ export class EnhancedMemoryStore {
                     confidence: row[4],
                     created_at: row[5],
                     updated_at: row[6],
-                    source_node_ids: JSON.parse(row[7] || '[]')
+                    source_node_ids: JSON.parse(row[7] || '[]'),
                 })),
                 relations: relations.map((row) => ({
                     id: row[0],
@@ -1692,10 +1807,10 @@ export class EnhancedMemoryStore {
                     properties: JSON.parse(row[5] || '{}'),
                     created_at: row[6],
                     updated_at: row[7],
-                    source_node_ids: JSON.parse(row[8] || '[]')
+                    source_node_ids: JSON.parse(row[8] || '[]'),
                 })),
                 exported_at: new Date().toISOString(),
-                total_records: memories.length + entities.length + relations.length
+                total_records: memories.length + entities.length + relations.length,
             };
             const result = format === 'json' ? JSON.stringify(data, null, 2) : this.convertToCSV(data);
             const latency = Date.now() - startTime;
@@ -1714,7 +1829,7 @@ export class EnhancedMemoryStore {
         const startTime = Date.now();
         try {
             await this.initialize();
-            const parsedData = JSON.parse(data);
+            const parsedData = this.safeJsonParse(data, {});
             let imported = 0;
             const errors = [];
             // Import memories
@@ -1730,7 +1845,7 @@ export class EnhancedMemoryStore {
                             memory.type || 'memory',
                             JSON.stringify(memory.metadata || {}),
                             memory.importance_score || 0.5,
-                            memory.access_count || 0
+                            memory.access_count || 0,
                         ]);
                         imported++;
                     }
@@ -1752,7 +1867,7 @@ export class EnhancedMemoryStore {
                             entity.type,
                             JSON.stringify(entity.properties || {}),
                             entity.confidence || 1.0,
-                            JSON.stringify(entity.source_node_ids || [])
+                            JSON.stringify(entity.source_node_ids || []),
                         ]);
                         imported++;
                     }
@@ -1775,7 +1890,7 @@ export class EnhancedMemoryStore {
                             relation.relation_type,
                             relation.strength || 1.0,
                             JSON.stringify(relation.properties || {}),
-                            JSON.stringify(relation.source_node_ids || [])
+                            JSON.stringify(relation.source_node_ids || []),
                         ]);
                         imported++;
                     }
@@ -1824,14 +1939,14 @@ export class EnhancedMemoryStore {
             const [nodeRows, entityRows, relationRows] = await Promise.all([
                 this.execute(nodeQuery, params),
                 this.execute('SELECT * FROM entities'),
-                this.execute('SELECT * FROM relations')
+                this.execute('SELECT * FROM relations'),
             ]);
             const nodes = nodeRows.map((row) => ({
                 id: row[0],
                 label: row[1].substring(0, 50) + (row[1].length > 50 ? '...' : ''),
                 type: row[2],
                 importance: row[6] || 0.5,
-                group: row[2]
+                group: row[2],
             }));
             const edges = relationRows.map((row) => ({
                 id: row[0],
@@ -1839,7 +1954,7 @@ export class EnhancedMemoryStore {
                 to: row[2],
                 label: row[3],
                 strength: row[4] || 1.0,
-                width: Math.max(1, (row[4] || 1.0) * 3)
+                width: Math.max(1, (row[4] || 1.0) * 3),
             }));
             const latency = Date.now() - startTime;
             this.recordPerformance('get_memory_graph', latency, false, nodes.length + edges.length);
@@ -1874,7 +1989,7 @@ export class EnhancedMemoryStore {
                             ...JSON.parse(removeMemory[5] || '{}'),
                             ...JSON.parse(keepMemory[5] || '{}'),
                             consolidated_from: [removeMemory[0]],
-                            consolidated_at: new Date().toISOString()
+                            consolidated_at: new Date().toISOString(),
                         };
                         await this.execute(`
 							UPDATE nodes 
@@ -1884,7 +1999,7 @@ export class EnhancedMemoryStore {
                             JSON.stringify(mergedMetadata),
                             Math.max(keepMemory[6], removeMemory[6]) + 0.1,
                             removeMemory[7] || 0,
-                            keepMemory[0]
+                            keepMemory[0],
                         ]);
                         await this.execute('DELETE FROM nodes WHERE id = ?', [removeMemory[0]]);
                         consolidated++;
@@ -1913,7 +2028,7 @@ export class EnhancedMemoryStore {
         // Simple Jaccard similarity for word sets
         const words1 = new Set(text1.toLowerCase().split(/\s+/));
         const words2 = new Set(text2.toLowerCase().split(/\s+/));
-        const intersection = new Set([...words1].filter(x => words2.has(x)));
+        const intersection = new Set([...words1].filter((x) => words2.has(x)));
         const union = new Set([...words1, ...words2]);
         return intersection.size / union.size;
     }
@@ -1922,7 +2037,13 @@ export class EnhancedMemoryStore {
         const headers = ['id', 'content', 'type', 'created_at', 'importance_score'];
         const rows = [
             headers.join(','),
-            ...data.memories.map((m) => [m.id, `"${m.content.replace(/"/g, '""')}"`, m.type, m.created_at, m.importance_score].join(','))
+            ...data.memories.map((m) => [
+                m.id,
+                `"${m.content.replace(/"/g, '""')}"`,
+                m.type,
+                m.created_at,
+                m.importance_score,
+            ].join(',')),
         ];
         return rows.join('\n');
     }
@@ -1943,7 +2064,7 @@ export class EnhancedMemoryStore {
             score += 0.1;
         // Content analysis
         const importantWords = ['remember', 'important', 'critical', 'key', 'vital'];
-        const wordCount = importantWords.filter(word => content.toLowerCase().includes(word)).length;
+        const wordCount = importantWords.filter((word) => content.toLowerCase().includes(word)).length;
         score += wordCount * 0.05;
         return Math.min(1.0, Math.max(0.0, score));
     }
@@ -1980,19 +2101,20 @@ export class EnhancedMemoryStore {
         }
         this.queryCache.set(key, {
             data,
-            expiry: Date.now() + this.cacheExpiry
+            expiry: Date.now() + this.cacheExpiry,
         });
     }
     invalidateCache(patterns) {
         for (const [key] of this.queryCache) {
-            if (patterns.some(pattern => key.includes(pattern))) {
+            if (patterns.some((pattern) => key.includes(pattern))) {
                 this.queryCache.delete(key);
             }
         }
     }
     recordPerformance(operation, latency, cacheHit, resultCount) {
         // Update metrics
-        this.metrics.operationCounts[operation] = (this.metrics.operationCounts[operation] || 0) + 1;
+        this.metrics.operationCounts[operation] =
+            (this.metrics.operationCounts[operation] || 0) + 1;
         const prevAvg = this.metrics.averageLatencies[operation] || 0;
         const count = this.metrics.operationCounts[operation];
         this.metrics.averageLatencies[operation] = (prevAvg * (count - 1) + latency) / count;
@@ -2021,12 +2143,32 @@ export class EnhancedMemoryStore {
         return {
             size: this.queryCache.size,
             maxSize: this.maxCacheSize,
-            hitRates: { ...this.metrics.cacheHitRates }
+            hitRates: { ...this.metrics.cacheHitRates },
         };
     }
     clearCache() {
         this.queryCache.clear();
+        this.cacheAccessTimes.clear();
         console.log('🧹 Cache cleared');
+    }
+    /**
+     * Periodic cleanup of expired cache entries
+     */
+    cleanupExpiredCache() {
+        const now = Date.now();
+        const expiredKeys = [];
+        for (const [key, entry] of this.queryCache) {
+            if (now > entry.expiry) {
+                expiredKeys.push(key);
+            }
+        }
+        for (const key of expiredKeys) {
+            this.queryCache.delete(key);
+            this.cacheAccessTimes.delete(key);
+        }
+        if (expiredKeys.length > 0) {
+            console.log(`🧹 Cleaned up ${expiredKeys.length} expired cache entries`);
+        }
     }
     async close() {
         if (this.connection) {
@@ -2064,7 +2206,9 @@ export class EnhancedMemoryStore {
                     continue;
                 }
                 // Increment usage count
-                await this.execute('UPDATE tags SET usage_count = usage_count + 1 WHERE id = ?', [tagId]);
+                await this.execute('UPDATE tags SET usage_count = usage_count + 1 WHERE id = ?', [
+                    tagId,
+                ]);
                 added.push(tagName);
             }
             // Link memory to tag
@@ -2081,7 +2225,9 @@ export class EnhancedMemoryStore {
         const removed = [];
         const notFound = [];
         for (const tagName of tagNames) {
-            const tagResults = await this.execute('SELECT id FROM tags WHERE name = ?', [tagName]);
+            const tagResults = await this.execute('SELECT id FROM tags WHERE name = ?', [
+                tagName,
+            ]);
             if (tagResults.length === 0) {
                 notFound.push(tagName);
                 continue;
@@ -2093,7 +2239,9 @@ export class EnhancedMemoryStore {
 			`, [memoryId, tagId]);
             if (result.length > 0) {
                 // Decrement usage count
-                await this.execute('UPDATE tags SET usage_count = usage_count - 1 WHERE id = ?', [tagId]);
+                await this.execute('UPDATE tags SET usage_count = usage_count - 1 WHERE id = ?', [
+                    tagId,
+                ]);
                 removed.push(tagName);
             }
             else {
@@ -2125,11 +2273,11 @@ export class EnhancedMemoryStore {
 			`;
         }
         const results = await this.execute(query, params);
-        return results.map(row => ({
+        return results.map((row) => ({
             id: row.id,
             name: row.name,
             color: row.color,
-            usageCount: row.usage_count
+            usageCount: row.usage_count,
         }));
     }
     async findByTags(tagNames, limit = 50) {
@@ -2149,16 +2297,16 @@ export class EnhancedMemoryStore {
 			ORDER BY COUNT(t.id) DESC, n.created_at DESC
 			LIMIT ?
 		`, [...tagNames, limit]);
-        return results.map(row => ({
+        return results.map((row) => ({
             memory: {
                 id: row.id,
                 content: row.content,
                 type: row.type,
                 metadata: row.metadata ? JSON.parse(row.metadata) : {},
                 createdAt: row.created_at,
-                importanceScore: row.importance_score
+                importanceScore: row.importance_score,
             },
-            matchingTags: row.matching_tags ? row.matching_tags.split(',') : []
+            matchingTags: row.matching_tags ? row.matching_tags.split(',') : [],
         }));
     }
     // === DELETION OPERATIONS (Saying Goodbye Digital Style) 💀🗑️ ===
@@ -2169,7 +2317,7 @@ export class EnhancedMemoryStore {
         await this.initialize();
         // Get memories of this type
         const memories = await this.execute('SELECT id FROM nodes WHERE type = ?', [type]);
-        const memoryIds = memories.map(m => m.id);
+        const memoryIds = memories.map((m) => m.id);
         let deletedEntities = 0;
         let deletedRelations = 0;
         if (memoryIds.length > 0) {
@@ -2187,7 +2335,11 @@ export class EnhancedMemoryStore {
             await this.execute('DELETE FROM nodes WHERE type = ?', [type]);
         }
         console.log(`🗑️💀 Deleted ${memories.length} memories of type '${type}' and associated data`);
-        return { deleted: memories.length, entities: deletedEntities, relations: deletedRelations };
+        return {
+            deleted: memories.length,
+            entities: deletedEntities,
+            relations: deletedRelations,
+        };
     }
     async deleteByTags(tagNames, confirm = false) {
         if (!confirm) {
@@ -2195,7 +2347,7 @@ export class EnhancedMemoryStore {
         }
         await this.initialize();
         const memoriesWithTags = await this.findByTags(tagNames);
-        const memoryIds = memoriesWithTags.map(m => m.memory.id);
+        const memoryIds = memoriesWithTags.map((m) => m.memory.id);
         if (memoryIds.length > 0) {
             const placeholders = memoryIds.map(() => '?').join(',');
             await this.execute(`DELETE FROM nodes WHERE id IN (${placeholders})`, memoryIds);
@@ -2215,20 +2367,22 @@ export class EnhancedMemoryStore {
         query += ' ORDER BY confidence DESC, created_at DESC LIMIT ?';
         params.push(limit);
         const results = await this.execute(query, params);
-        return results.map(row => ({
+        return results.map((row) => ({
             id: row.id,
             name: row.name,
             type: row.type,
             properties: row.properties ? JSON.parse(row.properties) : {},
             confidence: row.confidence,
             createdAt: row.created_at,
-            sourceNodeIds: row.source_node_ids ? JSON.parse(row.source_node_ids) : []
+            sourceNodeIds: row.source_node_ids ? JSON.parse(row.source_node_ids) : [],
         }));
     }
     async mergeEntities(sourceEntityId, targetEntityId) {
         await this.initialize();
         // Get source entity
-        const sourceResults = await this.execute('SELECT * FROM entities WHERE id = ?', [sourceEntityId]);
+        const sourceResults = await this.execute('SELECT * FROM entities WHERE id = ?', [
+            sourceEntityId,
+        ]);
         if (sourceResults.length === 0) {
             throw new Error(`Source entity ${sourceEntityId} not found`);
         }
@@ -2267,7 +2421,7 @@ export class EnhancedMemoryStore {
         query += ' ORDER BY r.strength DESC, r.created_at DESC LIMIT ?';
         params.push(limit);
         const results = await this.execute(query, params);
-        return results.map(row => ({
+        return results.map((row) => ({
             id: row.id,
             fromEntityId: row.from_entity_id,
             toEntityId: row.to_entity_id,
@@ -2276,7 +2430,7 @@ export class EnhancedMemoryStore {
             relationType: row.relation_type,
             strength: row.strength,
             properties: row.properties ? JSON.parse(row.properties) : {},
-            createdAt: row.created_at
+            createdAt: row.created_at,
         }));
     }
     // === OBSERVATION SYSTEM (Capturing Digital Insights) 📝🔍 ===
@@ -2286,7 +2440,14 @@ export class EnhancedMemoryStore {
         await this.execute(`
 			INSERT INTO observations (id, content, type, confidence, source_memory_ids, metadata)
 			VALUES (?, ?, ?, ?, ?, ?)
-		`, [id, content, type, confidence, JSON.stringify(sourceMemoryIds), JSON.stringify(metadata)]);
+		`, [
+            id,
+            content,
+            type,
+            confidence,
+            JSON.stringify(sourceMemoryIds),
+            JSON.stringify(metadata),
+        ]);
         console.log(`📝 Stored observation: ${id}`);
         return id;
     }
@@ -2301,14 +2462,14 @@ export class EnhancedMemoryStore {
         query += ' ORDER BY confidence DESC, created_at DESC LIMIT ?';
         params.push(limit);
         const results = await this.execute(query, params);
-        return results.map(row => ({
+        return results.map((row) => ({
             id: row.id,
             content: row.content,
             type: row.type,
             confidence: row.confidence,
             sourceMemoryIds: row.source_memory_ids ? JSON.parse(row.source_memory_ids) : [],
             metadata: row.metadata ? JSON.parse(row.metadata) : {},
-            createdAt: row.created_at
+            createdAt: row.created_at,
         }));
     }
     async deleteObservation(id) {
@@ -2383,7 +2544,7 @@ export class EnhancedMemoryStore {
 			GROUP BY type
 			ORDER BY count DESC
 		`);
-        // Entity statistics  
+        // Entity statistics
         const entityStats = await this.execute(`
 			SELECT 
 				type,
@@ -2439,7 +2600,7 @@ export class EnhancedMemoryStore {
             relationStats,
             tagStats: tagStats[0] || {},
             performanceStats,
-            trends
+            trends,
         };
     }
     async getPerformanceAnalytics() {
@@ -2495,8 +2656,296 @@ export class EnhancedMemoryStore {
             operationBreakdown,
             cacheEfficiency,
             slowestOperations,
-            hourlyUsage
+            hourlyUsage,
         };
+    }
+    /**
+     * Restore data from backup
+     */
+    async restoreFromBackup(backupData, options = {}) {
+        const result = {
+            success: false,
+            restored: { memories: 0, entities: 0, relations: 0 },
+            errors: [],
+            warnings: [],
+        };
+        try {
+            await this.initialize();
+            // Parse backup data
+            const backup = this.safeJsonParse(backupData, null);
+            if (!backup || !backup.data) {
+                result.errors.push('Invalid backup format');
+                return result;
+            }
+            // Validate backup structure
+            if (!backup.data.memories || !Array.isArray(backup.data.memories)) {
+                result.errors.push('Backup missing memories data');
+                return result;
+            }
+            // Optional: Clear existing data
+            if (options.clearExisting) {
+                result.warnings.push('Clearing existing data before restore');
+                await this.execute('DELETE FROM nodes');
+                await this.execute('DELETE FROM entities');
+                await this.execute('DELETE FROM relations');
+                await this.execute('DELETE FROM tags');
+                await this.execute('DELETE FROM memory_tags');
+                await this.execute('DELETE FROM observations');
+            }
+            // Import memories
+            for (const memory of backup.data.memories) {
+                try {
+                    await this.execute(`
+						INSERT OR REPLACE INTO nodes
+						(id, content, type, created_at, updated_at, metadata, importance_score, access_count, last_accessed)
+						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+					`, [
+                        memory.id,
+                        memory.content,
+                        memory.type || 'memory',
+                        memory.created_at || new Date().toISOString(),
+                        memory.updated_at || new Date().toISOString(),
+                        JSON.stringify(memory.metadata || {}),
+                        memory.importance_score || 0.5,
+                        memory.access_count || 0,
+                        memory.last_accessed || null,
+                    ]);
+                    result.restored.memories++;
+                }
+                catch (error) {
+                    result.errors.push(`Failed to restore memory ${memory.id}: ${error}`);
+                }
+            }
+            // Import entities
+            if (backup.data.entities && Array.isArray(backup.data.entities)) {
+                for (const entity of backup.data.entities) {
+                    try {
+                        await this.execute(`
+							INSERT OR REPLACE INTO entities
+							(id, name, type, properties, confidence, created_at, updated_at, source_node_ids)
+							VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+						`, [
+                            entity.id,
+                            entity.name,
+                            entity.type,
+                            JSON.stringify(entity.properties || {}),
+                            entity.confidence || 1.0,
+                            entity.created_at || new Date().toISOString(),
+                            entity.updated_at || new Date().toISOString(),
+                            JSON.stringify(entity.source_node_ids || []),
+                        ]);
+                        result.restored.entities++;
+                    }
+                    catch (error) {
+                        result.errors.push(`Failed to restore entity ${entity.id}: ${error}`);
+                    }
+                }
+            }
+            // Import relations
+            if (backup.data.relations && Array.isArray(backup.data.relations)) {
+                for (const relation of backup.data.relations) {
+                    try {
+                        await this.execute(`
+							INSERT OR REPLACE INTO relations
+							(id, from_entity_id, to_entity_id, relation_type, strength, properties, created_at, updated_at, source_node_ids)
+							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+						`, [
+                            relation.id,
+                            relation.from_entity_id,
+                            relation.to_entity_id,
+                            relation.relation_type,
+                            relation.strength || 1.0,
+                            JSON.stringify(relation.properties || {}),
+                            relation.created_at || new Date().toISOString(),
+                            relation.updated_at || new Date().toISOString(),
+                            JSON.stringify(relation.source_node_ids || []),
+                        ]);
+                        result.restored.relations++;
+                    }
+                    catch (error) {
+                        result.errors.push(`Failed to restore relation ${relation.id}: ${error}`);
+                    }
+                }
+            }
+            // Rebuild search indexes
+            try {
+                await this.rebuildSearchIndexes();
+                result.warnings.push('Search indexes rebuilt after restore');
+            }
+            catch (error) {
+                result.warnings.push(`Failed to rebuild search indexes: ${error}`);
+            }
+            result.success = result.errors.length === 0;
+            console.log(`✅ Backup restore completed: ${result.restored.memories} memories, ${result.restored.entities} entities, ${result.restored.relations} relations`);
+        }
+        catch (error) {
+            result.errors.push(`Restore failed: ${error}`);
+            console.error('❌ Backup restore failed:', error);
+        }
+        return result;
+    }
+    /**
+     * List available backups
+     */
+    async listBackups() {
+        // For now, return empty list since we don't have a backup directory structure
+        // This would be implemented with actual file system operations
+        return {
+            backups: [],
+            totalSize: 0,
+        };
+    }
+    /**
+     * Optimize search indexes
+     */
+    async optimizeSearchIndexes() {
+        const result = {
+            optimized: false,
+            indexesRebuilt: 0,
+            spaceSaved: 0,
+            performance: { before: 0, after: 0 },
+        };
+        try {
+            await this.initialize();
+            // Get performance baseline
+            const startTime = Date.now();
+            await this.execute('SELECT COUNT(*) FROM search_index');
+            result.performance.before = Date.now() - startTime;
+            // Analyze and optimize search indexes
+            console.log('🔧 Optimizing search indexes...');
+            // Rebuild trigram index for better performance
+            await this.execute('DROP INDEX IF EXISTS idx_trigram_gram');
+            await this.execute('CREATE INDEX idx_trigram_gram ON trigram_index(trigram)');
+            result.indexesRebuilt++;
+            // Rebuild word index
+            await this.execute('DROP INDEX IF EXISTS idx_search_word');
+            await this.execute('CREATE INDEX idx_search_word ON search_index(word)');
+            result.indexesRebuilt++;
+            // Optimize vector index
+            await this.execute('DROP INDEX IF EXISTS idx_vectors_memory');
+            await this.execute('CREATE INDEX idx_vectors_memory ON search_vectors(memory_id)');
+            result.indexesRebuilt++;
+            // Vacuum database to reclaim space
+            try {
+                await this.execute('VACUUM');
+                result.spaceSaved = 1; // Placeholder - would calculate actual space saved
+            }
+            catch (error) {
+                console.warn('VACUUM not supported, skipping space optimization');
+            }
+            // Get performance after optimization
+            const endTime = Date.now();
+            await this.execute('SELECT COUNT(*) FROM search_index');
+            result.performance.after = Date.now() - endTime;
+            result.optimized = true;
+            console.log(`✅ Search indexes optimized: ${result.indexesRebuilt} indexes rebuilt`);
+        }
+        catch (error) {
+            console.error('❌ Search index optimization failed:', error);
+        }
+        return result;
+    }
+    /**
+     * Optimize cache performance
+     */
+    async optimizeCache() {
+        const result = {
+            optimized: false,
+            entriesEvicted: 0,
+            memoryFreed: 0,
+            hitRate: 0,
+            sizeOptimized: false,
+        };
+        try {
+            await this.initialize();
+            const initialSize = this.queryCache.size;
+            const stats = this.getCacheStats();
+            // Calculate hit rate
+            const totalRequests = Object.values(stats.hitRates).reduce((sum, rate) => sum + rate.hits + rate.total - rate.hits, 0);
+            const totalHits = Object.values(stats.hitRates).reduce((sum, rate) => sum + rate.hits, 0);
+            result.hitRate = totalRequests > 0 ? (totalHits / totalRequests) * 100 : 0;
+            // Evict expired entries
+            this.cleanupExpiredCache();
+            // If cache is still too large, evict least recently used entries
+            const maxSize = Number(CONFIG.CACHE_SIZE) || 1000;
+            if (this.queryCache.size > maxSize * 0.9) {
+                // 90% of max size
+                const targetSize = Math.floor(maxSize * 0.7); // Reduce to 70% of max size
+                this.evictLRUCacheEntries(targetSize);
+                result.sizeOptimized = true;
+            }
+            result.entriesEvicted = initialSize - this.queryCache.size;
+            result.memoryFreed = result.entriesEvicted * 1024; // Rough estimate
+            result.optimized = true;
+            console.log(`✅ Cache optimized: ${result.entriesEvicted} entries evicted, hit rate: ${result.hitRate.toFixed(1)}%`);
+        }
+        catch (error) {
+            console.error('❌ Cache optimization failed:', error);
+        }
+        return result;
+    }
+    /**
+     * Evict least recently used cache entries down to target size
+     */
+    evictLRUCacheEntries(targetSize = 0) {
+        try {
+            // Validate input parameters
+            if (targetSize < 0)
+                targetSize = 0;
+            if (this.queryCache.size <= targetSize)
+                return;
+            // Sync cache access times with actual cache entries to handle orphaned entries
+            for (const key of this.cacheAccessTimes.keys()) {
+                if (!this.queryCache.has(key)) {
+                    this.cacheAccessTimes.delete(key);
+                }
+            }
+            // Add missing access times for entries that exist in cache but not in access times
+            for (const key of this.queryCache.keys()) {
+                if (!this.cacheAccessTimes.has(key)) {
+                    this.cacheAccessTimes.set(key, Date.now());
+                }
+            }
+            // Sort entries by access time (oldest first)
+            const entries = Array.from(this.cacheAccessTimes.entries()).sort(([, a], [, b]) => a - b);
+            // Calculate how many entries need to be removed
+            const toRemove = Math.max(0, this.queryCache.size - targetSize);
+            let removed = 0;
+            // Remove oldest entries until we reach target size
+            for (const [key] of entries) {
+                if (removed >= toRemove || this.queryCache.size <= targetSize)
+                    break;
+                // Double-check key exists before deletion
+                if (this.queryCache.has(key)) {
+                    this.queryCache.delete(key);
+                    removed++;
+                }
+                // Always clean up access time entry
+                this.cacheAccessTimes.delete(key);
+            }
+            // Safety check: if we still haven't reached target size, force eviction
+            if (this.queryCache.size > targetSize) {
+                const remainingKeys = Array.from(this.queryCache.keys());
+                const toForceRemove = this.queryCache.size - targetSize;
+                for (let i = 0; i < toForceRemove && i < remainingKeys.length; i++) {
+                    const key = remainingKeys[i];
+                    this.queryCache.delete(key);
+                    this.cacheAccessTimes.delete(key);
+                    removed++;
+                }
+            }
+            if (removed > 0) {
+                console.log(`🗑️ Evicted ${removed} LRU cache entries (target: ${targetSize}, current: ${this.queryCache.size})`);
+            }
+        }
+        catch (error) {
+            console.error('❌ LRU eviction failed:', error);
+            // Fallback: clear entire cache if eviction fails to prevent memory accumulation
+            const originalSize = this.queryCache.size;
+            this.queryCache.clear();
+            this.cacheAccessTimes.clear();
+            console.warn(`⚠️ Cleared entire cache as fallback (${originalSize} entries removed)`);
+        }
     }
 }
 //# sourceMappingURL=enhanced-memory-store.js.map

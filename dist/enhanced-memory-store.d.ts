@@ -13,6 +13,7 @@ export declare class EnhancedMemoryStore {
     private connection?;
     private isInitialized;
     private queryCache;
+    private cacheAccessTimes;
     private readonly maxCacheSize;
     private readonly cacheExpiry;
     private metrics;
@@ -77,6 +78,14 @@ export declare class EnhancedMemoryStore {
         errors: number;
     }>;
     private convertBigIntValues;
+    /**
+     * Safely extract a value from database result rows
+     */
+    private safeGetRowValue;
+    /**
+     * Safely parse JSON with error handling
+     */
+    private safeJsonParse;
     searchMemories(query: string, options?: SearchOptions): Promise<SearchResult>;
     /**
      * Exact search using word index for precise matching
@@ -144,6 +153,10 @@ export declare class EnhancedMemoryStore {
     getPerformanceMetrics(): PerformanceMetrics;
     getCacheStats(): CacheStats;
     clearCache(): void;
+    /**
+     * Periodic cleanup of expired cache entries
+     */
+    private cleanupExpiredCache;
     close(): Promise<void>;
     addTags(memoryId: string, tagNames: string[]): Promise<{
         added: string[];
@@ -206,5 +219,61 @@ export declare class EnhancedMemoryStore {
         slowestOperations: any[];
         hourlyUsage: any[];
     }>;
+    /**
+     * Restore data from backup
+     */
+    restoreFromBackup(backupData: string, options?: {
+        clearExisting?: boolean;
+    }): Promise<{
+        success: boolean;
+        restored: {
+            memories: number;
+            entities: number;
+            relations: number;
+        };
+        errors: string[];
+        warnings: string[];
+    }>;
+    /**
+     * List available backups
+     */
+    listBackups(): Promise<{
+        backups: Array<{
+            id: string;
+            description?: string;
+            created: string;
+            size: number;
+            memories: number;
+            entities: number;
+            relations: number;
+        }>;
+        totalSize: number;
+    }>;
+    /**
+     * Optimize search indexes
+     */
+    optimizeSearchIndexes(): Promise<{
+        optimized: boolean;
+        indexesRebuilt: number;
+        spaceSaved: number;
+        performance: {
+            before: number;
+            after: number;
+        };
+    }>;
+    /**
+     * Optimize cache performance
+     */
+    optimizeCache(): Promise<{
+        optimized: boolean;
+        entriesEvicted: number;
+        memoryFreed: number;
+        hitRate: number;
+        sizeOptimized: boolean;
+    }>;
+    /**
+     * Evict least recently used cache entries down to target size
+     */
+    private evictLRUCacheEntries;
 }
 //# sourceMappingURL=enhanced-memory-store.d.ts.map

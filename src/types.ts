@@ -40,8 +40,8 @@ export interface Relation {
 	source_node_ids?: string[]
 }
 
-export interface Observation extends MemoryNode {
-	type: 'Observation'
+export interface Observation extends Omit<MemoryNode, 'type'> {
+	type: 'Observation' // Override type to be specific
 	subject_id?: string
 	observation_type: string
 }
@@ -76,7 +76,6 @@ export interface SearchOptions {
 	minImportance?: number
 	searchType?: 'exact' | 'fuzzy' | 'semantic' | 'hybrid'
 	types?: string[]
-	privacy?: string[]
 	tags?: string[]
 	includeDeleted?: boolean
 }
