@@ -29,6 +29,14 @@ export declare class EnhancedMemoryStore {
     analyzeMemory(content: string, extractEntities?: boolean, extractRelations?: boolean): Promise<any>;
     getSimilarMemories(content: string, limit?: number, threshold?: number): Promise<MemoryNode[]>;
     /**
+     * Intelligent auto-tagging based on content analysis
+     */
+    generateAutoTags(content: string, maxTags?: number): Promise<string[]>;
+    /**
+     * Calculate tag relevance score
+     */
+    private calculateTagRelevance;
+    /**
      * Advanced search with autocomplete suggestions
      */
     autoComplete(query: string, limit?: number): Promise<string[]>;

@@ -9,14 +9,15 @@ _"just an emo boy making databases remember what humans choose to forget..." �
 [![MCP](https://img.shields.io/badge/MCP-Protocol-blue?style=for-the-badge)](https://modelcontextprotocol.io/)
 [![NPM Version](https://img.shields.io/npm/v/enhanced-memory-mcp?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/enhanced-memory-mcp)
 
-A **powerful MCP (Model Context Protocol) server** that transforms how AI assistants store and retrieve memories. Built on a **20-tool consolidated architecture**, this intelligent memory system understands relationships, extracts entities automatically, and helps you find exactly what you're looking for.
+A **powerful MCP (Model Context Protocol) server** that transforms how AI assistants store and retrieve memories. Built on a **21-tool consolidated architecture**, this intelligent memory system understands relationships, extracts entities automatically, **generates smart tags from content**, and helps you find exactly what you're looking for.
 
 _Why did I build this? Because even machines deserve better memory than most humans have... 💔_
 
 ## 🌟 Key Features
 
-- **🎯 20 Unified Tools**: Consolidated architecture with operation-based interfaces
-- **🧠 Smart Entity Extraction**: Automatically identifies people, places, and concepts
+- **🎯 21 Unified Tools**: Consolidated architecture with operation-based interfaces
+- **� AI-Powered Auto-Tagging**: Intelligent content analysis with contextual tag generation
+- **�🧠 Smart Entity Extraction**: Automatically identifies people, places, and concepts
 - **🔗 Relationship Mapping**: Discovers and tracks connections between entities
 - **🔍 Semantic Search**: Find memories by meaning, not just keywords
 - **🚀 DuckDB Backend**: Analytical database optimized for complex queries
@@ -62,9 +63,9 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
-## 🛠️ MCP Tools (20 Consolidated Tools)
+## 🛠️ MCP Tools (21 Consolidated Tools)
 
-### 🧠 Core Memory Operations (5 Tools)
+### 🧠 Core Memory Operations (6 Tools)
 
 | Tool       | Operations                                | Description                                   |
 | ---------- | ----------------------------------------- | --------------------------------------------- |
@@ -73,6 +74,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 | `entity`   | create, read, update, delete, list, merge | Entity management with relationships          |
 | `relation` | create, read, delete, list                | Relationship operations between entities      |
 | `tag`      | add, remove, list, find                   | Advanced tagging and organization             |
+| `auto_tag` | analyze, apply, preview                   | **🎯 AI-powered content tagging**             |
 
 ### 🔍 Advanced Analysis (7 Tools)
 
@@ -98,6 +100,52 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 | `backup`      | create, restore, list                          | Data backup and restore operations |
 | `index`       | rebuild, optimize, stats                       | Search index management            |
 | `workflow`    | auto_tag, auto_consolidate, auto_cleanup       | Automated operations               |
+
+## 🎯 Intelligent Auto-Tagging
+
+The Enhanced Memory MCP Server features **advanced AI-powered auto-tagging** that automatically analyzes content and generates meaningful tags:
+
+### **Content Analysis Features**
+- **Technology Detection**: Identifies programming languages, frameworks, and tools
+- **Business Context**: Recognizes meetings, projects, deadlines, and domain-specific terms  
+- **Entity Extraction**: Finds people, places, organizations automatically
+- **Content Type Classification**: Distinguishes tasks, notes, ideas, issues, and solutions
+- **Sentiment Analysis**: Detects positive, negative, or mixed emotional content
+- **Priority Detection**: Identifies urgent, critical, or low-priority items
+- **Temporal Context**: Adds time-based tags (morning, afternoon, day-of-week)
+
+### **Auto-Tagging Tools**
+```javascript
+// Preview suggested tags without applying them
+await autoTag.preview({ memoryId: "mem_123" })
+
+// Generate tags for any content
+await autoTag.analyze({ 
+  content: "Debug React performance issues in Node.js API",
+  maxTags: 5 
+})
+
+// Apply intelligent tags to a memory
+await autoTag.apply({ 
+  memoryId: "mem_123", 
+  applyTags: true, 
+  maxTags: 4 
+})
+
+// Bulk auto-tag recent memories
+await workflow.autoTag({ 
+  options: { 
+    dryRun: false, 
+    maxActions: 10,
+    timeframe: "day" 
+  } 
+})
+```
+
+### **Example Auto-Tagging Results**
+- `"Fix React component performance"` → `react`, `issue`, `performance`, `solution`
+- `"Team meeting about Q4 budget"` → `meeting`, `team`, `budget`, `business`  
+- `"Learn Docker and Kubernetes"` → `docker`, `learning`, `idea`, `technology`
 
 ## 📊 Architecture
 
@@ -134,10 +182,17 @@ BACKUP_PATH=backups/
 CACHE_SIZE=1000
 CACHE_EXPIRY_MS=300000
 MAX_SEARCH_RESULTS=100
+DEFAULT_SIMILARITY_LIMIT=5
+SIMILARITY_THRESHOLD=0.7
+DEFAULT_SEARCH_LIMIT=50
 
 # Analytics
 ENABLE_PERFORMANCE_MONITORING=true
 ANALYTICS_RETENTION_DAYS=30
+
+# Development
+NODE_ENV=production
+LOG_LEVEL=info
 ```
 
 ## 📝 Usage Examples

@@ -729,6 +729,168 @@ export class EnhancedMemoryStore {
 	}
 
 	/**
+	 * Intelligent auto-tagging based on content analysis
+	 */
+	async generateAutoTags(content: string, maxTags = 5): Promise<string[]> {
+		const tags: Set<string> = new Set()
+		const contentLower = content.toLowerCase()
+		
+		// 1. Extract entities (names, places, organizations)
+		const entities = this.extractSimpleEntities(content)
+		entities.forEach(entity => {
+			if (entity.confidence > 0.7) {
+				tags.add(entity.name.toLowerCase().replace(/\s+/g, '-'))
+			}
+		})
+
+		// 2. Technology and programming keywords
+		const techKeywords = [
+			'javascript', 'python', 'typescript', 'react', 'node', 'api', 'database', 
+			'sql', 'nosql', 'mongodb', 'postgres', 'mysql', 'redis', 'docker', 'kubernetes',
+			'aws', 'azure', 'gcp', 'git', 'github', 'ci/cd', 'devops', 'machine learning',
+			'ai', 'neural network', 'deep learning', 'nlp', 'computer vision', 'algorithm',
+			'data structure', 'microservices', 'rest', 'graphql', 'oauth', 'jwt', 'ssl',
+			'encryption', 'security', 'vulnerability', 'performance', 'optimization',
+			'testing', 'unit test', 'integration test', 'debugging', 'logging', 'monitoring'
+		]
+		techKeywords.forEach(keyword => {
+			if (contentLower.includes(keyword)) {
+				tags.add(keyword.replace(/\s+/g, '-'))
+			}
+		})
+
+		// 3. Business and domain keywords
+		const businessKeywords = [
+			'meeting', 'project', 'deadline', 'budget', 'revenue', 'cost', 'profit',
+			'strategy', 'planning', 'roadmap', 'milestone', 'requirement', 'specification',
+			'customer', 'client', 'user', 'stakeholder', 'team', 'collaboration',
+			'marketing', 'sales', 'finance', 'hr', 'legal', 'compliance', 'audit',
+			'risk', 'security', 'privacy', 'gdpr', 'contract', 'agreement', 'invoice'
+		]
+		businessKeywords.forEach(keyword => {
+			if (contentLower.includes(keyword)) {
+				tags.add(keyword.replace(/\s+/g, '-'))
+			}
+		})
+
+		// 4. Content type detection
+		if (contentLower.includes('todo') || contentLower.includes('task') || contentLower.includes('action item')) {
+			tags.add('task')
+		}
+		if (contentLower.includes('note') || contentLower.includes('remember') || contentLower.includes('memo')) {
+			tags.add('note')
+		}
+		if (contentLower.includes('idea') || contentLower.includes('concept') || contentLower.includes('brainstorm')) {
+			tags.add('idea')
+		}
+		if (contentLower.includes('issue') || contentLower.includes('problem') || contentLower.includes('bug')) {
+			tags.add('issue')
+		}
+		if (contentLower.includes('solution') || contentLower.includes('fix') || contentLower.includes('resolve')) {
+			tags.add('solution')
+		}
+		if (contentLower.includes('learn') || contentLower.includes('study') || contentLower.includes('research')) {
+			tags.add('learning')
+		}
+
+		// 5. Extract important nouns and topics using simple pattern matching
+		const importantPatterns = [
+			/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g, // Proper nouns
+			/\b(\w+(?:ing|tion|sion|ment|ness|ity|ty))\b/g, // Common suffixes
+		]
+		
+		importantPatterns.forEach(pattern => {
+			const matches = content.match(pattern)
+			if (matches) {
+				matches.forEach(match => {
+					const cleaned = match.trim().toLowerCase()
+					if (cleaned.length > 3 && cleaned.length < 20) {
+						tags.add(cleaned.replace(/\s+/g, '-'))
+					}
+				})
+			}
+		})
+
+		// 6. Time-based tags
+		const now = new Date()
+		const hour = now.getHours()
+		if (hour >= 6 && hour < 12) tags.add('morning')
+		else if (hour >= 12 && hour < 18) tags.add('afternoon')
+		else if (hour >= 18 && hour < 22) tags.add('evening')
+		else tags.add('night')
+
+		// Add day of week
+		const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+		tags.add(days[now.getDay()])
+
+		// 7. Sentiment analysis (basic)
+		const positiveWords = ['good', 'great', 'excellent', 'amazing', 'success', 'win', 'achieve', 'complete']
+		const negativeWords = ['bad', 'terrible', 'fail', 'error', 'problem', 'issue', 'concern', 'worry']
+		
+		const hasPositive = positiveWords.some(word => contentLower.includes(word))
+		const hasNegative = negativeWords.some(word => contentLower.includes(word))
+		
+		if (hasPositive && !hasNegative) tags.add('positive')
+		else if (hasNegative && !hasPositive) tags.add('negative')
+		else if (hasPositive && hasNegative) tags.add('mixed-sentiment')
+
+		// 8. Priority detection
+		if (contentLower.includes('urgent') || contentLower.includes('asap') || contentLower.includes('critical')) {
+			tags.add('high-priority')
+		}
+		if (contentLower.includes('low priority') || contentLower.includes('when time permits')) {
+			tags.add('low-priority')
+		}
+
+		// Return top tags by relevance (limit to maxTags)
+		const tagArray = Array.from(tags)
+			.filter(tag => tag.length > 2 && tag.length < 25) // Filter reasonable tag lengths
+			.slice(0, maxTags * 2) // Get more than needed for filtering
+			
+		// Simple scoring: prefer shorter, more common words
+		const scoredTags = tagArray.map(tag => ({
+			tag,
+			score: this.calculateTagRelevance(tag, content)
+		}))
+		.sort((a, b) => b.score - a.score)
+		.slice(0, maxTags)
+		.map(item => item.tag)
+
+		return scoredTags
+	}
+
+	/**
+	 * Calculate tag relevance score
+	 */
+	private calculateTagRelevance(tag: string, content: string): number {
+		const contentLower = content.toLowerCase()
+		const tagLower = tag.toLowerCase()
+		
+		let score = 0
+		
+		// Frequency in content
+		const frequency = (contentLower.match(new RegExp(tagLower.replace('-', '\\s+'), 'g')) || []).length
+		score += frequency * 2
+		
+		// Prefer shorter tags (more general)
+		score += Math.max(0, 10 - tag.length)
+		
+		// Boost if appears early in content
+		const position = contentLower.indexOf(tagLower)
+		if (position >= 0 && position < content.length * 0.2) {
+			score += 3
+		}
+		
+		// Penalty for very common words
+		const commonWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']
+		if (commonWords.includes(tagLower)) {
+			score -= 5
+		}
+		
+		return score
+	}
+
+	/**
 	 * Advanced search with autocomplete suggestions
 	 */
 	async autoComplete(query: string, limit = 10): Promise<string[]> {

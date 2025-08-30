@@ -328,6 +328,74 @@ server.registerTool(
 	}
 )
 
+server.registerTool(
+	'auto_tag',
+	{
+		title: 'Intelligent Auto-Tagging',
+		description: 'Generate and apply smart tags based on content analysis',
+		inputSchema: {
+			operation: z.enum(['analyze', 'apply', 'preview']),
+			memoryId: z.string().optional(),
+			content: z.string().optional(),
+			maxTags: z.number().default(5).optional(),
+			applyTags: z.boolean().default(false).optional(),
+		},
+	},
+	async ({ operation, memoryId, content, maxTags, applyTags }) => {
+		let result
+
+		switch (operation) {
+			case 'analyze':
+				if (!content) throw new Error('Content required for analyze operation')
+				const suggestedTags = await memoryStore.generateAutoTags(content, maxTags || 5)
+				result = {
+					suggestedTags,
+					content: content.slice(0, 200) + '...',
+					confidence: suggestedTags.length > 0 ? 0.8 : 0.1
+				}
+				break
+			case 'apply':
+				if (!memoryId) throw new Error('memoryId required for apply operation')
+				const memory = await memoryStore.getMemory(memoryId)
+				if (!memory) throw new Error('Memory not found')
+				
+				const tagsToApply = await memoryStore.generateAutoTags(memory.content, maxTags || 5)
+				if (applyTags && tagsToApply.length > 0) {
+					await memoryStore.addTags(memoryId, tagsToApply)
+				}
+				
+				result = {
+					memoryId,
+					tagsApplied: applyTags ? tagsToApply : [],
+					suggestedTags: tagsToApply,
+					applied: applyTags
+				}
+				break
+			case 'preview':
+				if (!memoryId) throw new Error('memoryId required for preview operation')
+				const targetMemory = await memoryStore.getMemory(memoryId)
+				if (!targetMemory) throw new Error('Memory not found')
+				
+				const previewTags = await memoryStore.generateAutoTags(targetMemory.content, maxTags || 5)
+				const existingTagObjects = await memoryStore.listTags(memoryId)
+				const existingTagNames = existingTagObjects.map(tag => tag.name)
+				
+				result = {
+					memoryId,
+					content: targetMemory.content.slice(0, 200) + '...',
+					existingTags: existingTagNames,
+					suggestedTags: previewTags,
+					newTags: previewTags.filter(tag => !existingTagNames.includes(tag))
+				}
+				break
+		}
+
+		return {
+			content: [{ type: 'text', text: serializeBigInt(result) }],
+		}
+	}
+)
+
 // === ADVANCED ANALYSIS OPERATIONS ===
 
 server.registerTool(
@@ -866,6 +934,8 @@ server.registerTool(
 					dryRun: z.boolean().default(true).optional(),
 					threshold: z.number().default(0.8).optional(),
 					maxActions: z.number().default(100).optional(),
+					maxTagsPerMemory: z.number().default(5).optional(),
+					timeframe: z.enum(['hour', 'day', 'week']).default('day').optional(),
 				})
 				.optional(),
 		},
@@ -876,19 +946,53 @@ server.registerTool(
 
 		switch (operation) {
 			case 'auto_tag':
-				// Simulate auto-tagging by analyzing recent memories
+				// Real auto-tagging with content analysis
 				const recentMemories = await memoryStore.getRecentMemories(
 					opts.maxActions || 100,
-					'day'
+					opts.timeframe || 'day'
 				)
 				let taggedCount = 0
+				let totalTagsAdded = 0
+				const tagResults: Array<{memoryId: string, tagsAdded: string[], content: string}> = []
+				
 				for (const memory of recentMemories.slice(0, opts.maxActions || 10)) {
-					if (!opts.dryRun) {
-						await memoryStore.addTags(memory.id, ['auto-tagged'])
-						taggedCount++
+					try {
+						// Generate intelligent tags based on content
+						const suggestedTags = await memoryStore.generateAutoTags(
+							memory.content, 
+							opts.maxTagsPerMemory || 5
+						)
+						
+						if (suggestedTags.length > 0) {
+							if (!opts.dryRun) {
+								await memoryStore.addTags(memory.id, suggestedTags)
+							}
+							taggedCount++
+							totalTagsAdded += suggestedTags.length
+							tagResults.push({
+								memoryId: memory.id,
+								tagsAdded: suggestedTags,
+								content: memory.content.slice(0, 100) + '...' // Truncate for readability
+							})
+						}
+					} catch (error) {
+						console.warn(`Failed to auto-tag memory ${memory.id}:`, error)
 					}
 				}
-				result = { operation: 'auto_tag', processed: taggedCount, dryRun: opts.dryRun }
+				
+				result = { 
+					operation: 'auto_tag', 
+					memoriesProcessed: taggedCount, 
+					totalTagsAdded,
+					dryRun: opts.dryRun,
+					results: tagResults.slice(0, 5), // Show first 5 examples
+					totalCandidates: recentMemories.length,
+					settings: {
+						maxTagsPerMemory: opts.maxTagsPerMemory || 5,
+						timeframe: opts.timeframe || 'day',
+						maxActions: opts.maxActions || 10
+					}
+				}
 				break
 			case 'auto_consolidate':
 				const consolidationResult = await memoryStore.consolidateMemories(
